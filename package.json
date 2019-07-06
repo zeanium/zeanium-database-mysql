@@ -1,0 +1,28 @@
+{
+  "name": "@zeanium/database-mysql",
+  "version": "1.0.1",
+  "description": "zeanium http server module",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zeanium/zeanium-database-mysql.git"
+  },
+  "scripts": {
+    "publish": "npm publish --access public",
+    "unpublish": "npm unpublish --access public  --force"
+  },
+  "keywords": [
+    "mysql",
+    "database",
+    "database-mysql",
+    "zeanium",
+    "nodejs"
+  ],
+  "author": "yangyxu",
+  "email": "xuyy0618@qq.com",
+  "license": "MIT",
+  "dependencies": {
+    "@zeanium/core": "^1.0.2",
+    "mysql": "^2.17.1"
+  }
+}
