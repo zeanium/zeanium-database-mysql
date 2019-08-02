@@ -1,8 +1,10 @@
 /**
  * Created by yangyxu on 8/20/14.
  */
-var ConnectionPool = require('../schema/ConnectionPool');
+var ConnectionPool = require('../core/ConnectionPool');
 var Connection = require('./Connection');
+var node_mysql = require('mysql');
+var SCHEMA = require('./SCHEMA');
 
 module.exports = zn.Class(ConnectionPool, {
     methods: {
@@ -14,7 +16,7 @@ module.exports = zn.Class(ConnectionPool, {
                 multipleStatements: true
             }, config);
 
-            this._pool = require('mysql').createPool(this._config);
+            this._pool = node_mysql.createPool(this._config);
         },
         setConfig: function (config){
             return this._config = config, this;
@@ -30,14 +32,13 @@ module.exports = zn.Class(ConnectionPool, {
             var _defer = zn.async.defer();
             var _config = zn.extend({}, this._config),
                 _database = database || _config.database,
-                _sql = 'drop database if exists {0};create database if not exists {0};'.format(_database);
+                _sql = SCHEMA.DATABASE.CREATE.format({ database: _database });
             _config.database = null;
             delete _config.database;
-            require('mysql').createConnection(_config)
+            node_mysql.createConnection(_config)
                 .query(_sql, function (err, rows, fields){
                     if(err){
-                        zn.error('mysql.createConnection query error: ', err.stack);
-                        console.log(err.stack);
+                        zn.error(err);
                         _defer.reject(err);
                     }else {
                         _defer.resolve(rows);
@@ -61,8 +62,7 @@ module.exports = zn.Class(ConnectionPool, {
                 zn.debug('ConnectionPool query: ' + sql);
                 connection.query(sql, function (err, rows){
                     if(err){
-                        zn.error('ConnectionPool connection query error: ', err.stack);
-                        console.log(err.stack);
+                        zn.error(err);
                         _defer.reject(err);
                     }else {
                         _defer.resolve(rows);
@@ -79,8 +79,7 @@ module.exports = zn.Class(ConnectionPool, {
         __getNativeConnection: function (success, error){
             this._pool.getConnection(function (err, connection){
                 if (err){
-                    zn.error('ConnectionPool getConnection error: ', err.message);
-                    console.log(err.stack);
+                    zn.error(err);
                     error && error(err);
                 }else {
                     success && success(connection);

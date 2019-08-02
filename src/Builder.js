@@ -1,27 +1,18 @@
 /**
  * Created by yangyxu on 8/20/14.
  */
-var SchemaSqlParser = require('./schema/SchemaSqlParser');
-var SCHEMA = require('./zn.sql.schema');
+var Parser = require('./mysql/SqlParser');
+var SCHEMA = require('./mysql/SCHEMA');
 var __slice = Array.prototype.slice;
 
-module.exports = zn.sql = zn.Class({
+module.exports = zn.Class({
     static: true,
+    properties: {
+        SCHEMA: SCHEMA
+    },
     methods: {
         init: function (){
-            this._schema = SCHEMA;
-        },
-        setSessionId: function (sessionid){
-            this._sessionId = sessionid;
-        },
-        getSessionId: function (){
-            return this._sessionId;
-        },
-        rights: function (userId){
-            return " (zn_rights_enabled = 0 or (zn_rights_enabled <> 0 and zn_plugin_admin_user_exist({0}, zn_rights_users, zn_rights_roles) <> 0)) ".format(userId || this.getSessionId());
-        },
-        observeRights: function (userId){
-            return " (zn_rights_enabled = 0 or (zn_rights_enabled <> 0 and zn_plugin_admin_user_exist({0}, zn_rights_observe_users, zn_rights_observe_roles) <> 0)) ".format(userId || this.getSessionId());
+            this.parser = new Parser(this);
         },
         paging: function (){
             return __slice.call(arguments).map(function (data){
@@ -46,6 +37,9 @@ module.exports = zn.sql = zn.Class({
         delete: function (){
             return this.format(SCHEMA.TABLE.DELETE, arguments);
         },
+        parse: function (sql, data){
+            return this.__format(sql, data);
+        },
         format: function (sql, argv){
             var _argv = [];
             switch (zn.type(argv)) {
@@ -66,8 +60,8 @@ module.exports = zn.sql = zn.Class({
         __format: function (sql, data){
             var _data = zn.overwrite({ }, data);
             _data.fields = _data.fields || '*';
-            return sql.format(SchemaSqlParser.parse(_data)).replace(/\s+/g, ' ');
-            //return sql.format(SchemaSqlParser.parse(data)).replace(/\s+/g, ' ').replace(/(^s*)|(s*$)/g, '');
+            return sql.format(this.parser.parse(_data)).replace(/\s+/g, ' ');
+            //return sql.format(Parser.parse(data)).replace(/\s+/g, ' ').replace(/(^s*)|(s*$)/g, '');
         }
     }
 });

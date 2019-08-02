@@ -1,6 +1,6 @@
-require('./zn.sql');
 module.exports = {
-    Store: require('./Store'),
-    schema: require('./schema/index'),
-    mysql: require('./schema.mysql/index')
+    core: require('./core/index'),
+    mysql: require('./core/index'),
+    Builder: require('./Builder'),
+    Store: require('./Store')
 }

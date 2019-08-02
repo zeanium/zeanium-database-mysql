@@ -1,7 +1,8 @@
 /**
  * Created by yangyxu on 8/20/14.
  */
-var DEFAULTS = {
+var VALUES = {
+    DEFAULTS: {
         table: '',
         fields: '*',
         values: '',
@@ -10,58 +11,55 @@ var DEFAULTS = {
         order: '',
         group: '',
         limit: ''
-    },
-    __firstCharUpperCase = function (value){
-        return value.replace(/\b(\w)(\w*)/g, function($0, $1, $2) {
-            return $1.toUpperCase() + $2;
-        });
-    },
-    __formatSqlValue = function (value){
-        if(zn.is(value, 'string') && value!=='now()'){
-            if(value.indexOf('{{') === 0 && value.indexOf('}}') === (value.length-2)){
-                value = value.substring(2, value.length - 2);
-            }else {
-                value = "'" + value + "'";
-            }
-        }
-
-        return value;
-        //return isNaN(value) ? ("'"+value+"'") : value;
-    };
-
-var PARSE_EXTS = {
-    sets: 'updates'
-}
+    }
+};
 
 module.exports = zn.Class({
-    partial: true,
-    static: true,
+    events: ['parse', 'parseTable', 'parseGroup', 'parseOrder', 'parseValues', 'parseUpdates', 'parseFields', 'parseWhere'],
     methods: {
-        parse: function (data){
+        init: {
+            auto: true,
+            value: function (context){
+                this._context = context;
+            }
+        },
+        __firstCharUpperCase: function (value){
+            return value.replace(/\b(\w)(\w*)/g, function($0, $1, $2) {
+                return $1.toUpperCase() + $2;
+            });
+        },
+        __formatSqlValue: function (value){
+            if(zn.is(value, 'string') && value!=='now()'){
+                if(value.indexOf('{{') === 0 && value.indexOf('}}') === (value.length-2)){
+                    value = value.substring(2, value.length - 2);
+                }else {
+                    value = "'" + value + "'";
+                }
+            }else if (zn.is(value, 'function')){
+                value = value.call(this._context);
+            }
+        
+            return value;
+            //return isNaN(value) ? ("'"+value+"'") : value;
+        },
+        parse: function (data, context){
             var _key = null,
                 _value = '',
                 _data = {};
+            this._context = this._context || context;
+            data = this.fire('parse', data, context) || data;
             zn.each(data || {}, function (value, key){
                 key = key.toLowerCase();
-                key = PARSE_EXTS[key] || key;
-                _key = __firstCharUpperCase(key);
+                _key = this.__firstCharUpperCase(key);
                 _value = (this["parse" + _key] && this["parse" + _key].call(this, value)) || '';
                 if(_value){
                     _data[key] = " " + _value + " ";
                 }
             }.bind(this));
-
-            return zn.overwrite(_data, DEFAULTS);
-        },
-        parseIfRights: function (value){
-            if(value){
-                //"zn_plugin_admin_user_exist({0}, zn_rights_users, zn_rights_roles) <> 0".format(zn.sql.getSessionId());
-                return zn.sql.rights();
-            }else {
-                return "";
-            }
+            return zn.overwrite(_data, VALUES.DEFAULTS);
         },
         parseTable: function (table){
+            table = this.fire('parseTable', table) || table;
             switch (zn.type(table)){
                 case 'string':
                     return table;
@@ -70,6 +68,7 @@ module.exports = zn.Class({
             }
         },
         parseGroup: function (group){
+            group = this.fire('parseGroup', group) || group;
             if(zn.is(group, 'function')){
                 group = group.call(this._context);
             }
@@ -89,6 +88,7 @@ module.exports = zn.Class({
             return _val;
         },
         parseOrder: function (order){
+            order = this.fire('parseOrder', order) || order;
             if(zn.is(order, 'function')){
                 order = order.call(this._context);
             }
@@ -115,27 +115,8 @@ module.exports = zn.Class({
 
             return _val;
         },
-        parseLimit: function (limit){
-            if(zn.is(limit, 'function')){
-                limit = limit.call(this._context);
-            }
-            var _val = '';
-            switch (zn.type(limit)){
-                case 'string':
-                    _val = limit;
-                    break;
-                case 'array':
-                    _val = limit[0] + ',' + limit[1];
-                    break;
-            }
-
-            if(_val){
-                _val = 'limit ' + _val;
-            }
-
-            return _val;
-        },
         parseValues: function (data){
+            data = this.fire('parseValues', data) || data;
             if(zn.is(data, 'function')){
                 data = data.call(this._context);
             }
@@ -145,16 +126,19 @@ module.exports = zn.Class({
                 case 'object':
                     var _keys = [],
                         _values = [];
-                    data.zn_create_user = data.zn_create_user || zn.sql.getSessionId();
                     zn.each(data, function (value, key){
                         _keys.push(key);
-                        _values.push(__formatSqlValue(value));
-                    });
+                        _values.push(this.__formatSqlValue(value));
+                    }.bind(this));
 
                     return "({0}) values ({1})".format(_keys.join(','), _values.join(','));
             }
         },
+        parseSets: function (data){
+            return this.parseUpdates(data);
+        },
         parseUpdates: function (data){
+            data = this.fire('parseUpdates', data) || data;
             if(zn.is(data, 'function')){
                 data = data.call(this._context);
             }
@@ -163,16 +147,15 @@ module.exports = zn.Class({
                     return data;
                 case 'object':
                     var _updates = [];
-                    data.zn_modify_user = data.zn_modify_user || zn.sql.getSessionId();
-                    data.zn_modify_time = data.zn_modify_time || "{{now()}}";
                     zn.each(data, function (value, key){
-                        _updates.push(key + ' = ' + __formatSqlValue(value));
-                    });
+                        _updates.push(key + ' = ' + this.__formatSqlValue(value));
+                    }.bind(this));
 
                     return _updates.join(',');
             }
         },
         parseFields: function (fields){
+            fields = this.fire('parseFields', fields) || fields;
             if(zn.is(fields, 'function')){
                 fields = fields.call(this._context);
             }
@@ -193,6 +176,7 @@ module.exports = zn.Class({
             }
         },
         parseWhere: function (where, addKeyWord){
+            where = this.fire('parseWhere', where, addKeyWord) || where;
             if(zn.is(where, 'function')){
                 where = where.call(this._context);
             }
@@ -246,7 +230,7 @@ module.exports = zn.Class({
                             return -1;
                         }
                         if(key.indexOf('&') == -1 && key.indexOf('|') == -1){
-                            _values.push(key + ' = ' + __formatSqlValue(value));
+                            _values.push(key + ' = ' + this.__formatSqlValue(value));
                         }else {
                             if(key.indexOf('&') != -1){
                                 switch (key.split('&')[1]) {

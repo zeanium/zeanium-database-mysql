@@ -1,7 +1,7 @@
 /**
  * Created by yangyxu on 9/17/14.
  */
-var ConnectionPool = require('./schema.mysql/ConnectionPool');
+var ConnectionPool = require('./mysql/ConnectionPool');
 
 module.exports = zn.Class({
     statics: {

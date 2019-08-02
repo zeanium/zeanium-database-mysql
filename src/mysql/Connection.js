@@ -1,7 +1,7 @@
 /**
  * Created by yangyxu on 8/20/14.
  */
-var Connection = require('../schema/Connection');
+var Connection = require('../core/Connection');
 
 module.exports = zn.Class(Connection, {
     properties: {
