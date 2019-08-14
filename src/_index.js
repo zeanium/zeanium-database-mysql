@@ -1,6 +1,9 @@
+var TransactionBlock = require('./core/TransactionBlock');
 module.exports = {
-    core: require('./core/index'),
-    mysql: require('./core/index'),
+    createTransactionBlock: function (context){
+        return new TransactionBlock(context);
+    },
     Builder: require('./Builder'),
-    Store: require('./Store')
+    Store: require('./Store'),
+    SCHEMA: require('./mysql/SCHEMA'),
 }

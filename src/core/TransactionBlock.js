@@ -3,7 +3,7 @@
  */
 var TransactionBlock = zn.Class({
     methods: {
-        init: function (){
+        init: function (context){
             this._tasks = [];
         },
         insert: function (handler, before, after){
@@ -29,9 +29,5 @@ var TransactionBlock = zn.Class({
         }
     }
 });
-
-zn.createTransactionBlock = function (){
-    return new TransactionBlock();
-}
 
 module.exports = TransactionBlock;
