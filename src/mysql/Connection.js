@@ -32,12 +32,12 @@ module.exports = zn.Class(Connection, {
                 _self = this;
 
             if(!this._connection){
-                this.__onQueryError(_defer, 'The mysql connection is null.');
+                this.__onQueryError(_defer, 'MySql Connection Is Null.');
             }else {
                 zn.debug(_query);
                 this._connection.query(_query, function(err, rows, fields) {
                     if (err){
-                        _self.__onQueryError(_defer, 'MySql Connection query error: ' + err.message);
+                        _self.__onQueryError(_defer, 'MySql Connection Query Error: ' + err.message);
                     }else {
                         _defer.resolve(rows, fields, _self);
                     }

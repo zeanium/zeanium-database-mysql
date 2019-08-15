@@ -35,6 +35,7 @@ module.exports = zn.Class(ConnectionPool, {
                 _sql = SCHEMA.DATABASE.CREATE.format({ database: _database });
             _config.database = null;
             delete _config.database;
+            zn.debug('Create Database: ', _config, _sql);
             node_mysql.createConnection(_config)
                 .query(_sql, function (err, rows, fields){
                     if(err){
@@ -59,7 +60,7 @@ module.exports = zn.Class(ConnectionPool, {
         __query: function (sql){
             var _defer = zn.async.defer();
             this.__getNativeConnection(function (connection){
-                zn.debug('ConnectionPool query: ' + sql);
+                zn.debug('Exec Sql: ' + sql);
                 connection.query(sql, function (err, rows){
                     if(err){
                         zn.error(err);

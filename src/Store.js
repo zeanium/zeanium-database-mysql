@@ -33,30 +33,6 @@ module.exports = zn.Class({
         },
         createDataBase: function () {
             return this._pool.createDataBase(this._config.database);
-        },
-        createModel: function (ModelClass) {
-            return this._pool.query(ModelClass.getCreateSql());
-        },
-        createModels: function (models){
-            var _tran = this.beginTransaction(),
-                _defer = zn.async.defer(),
-                _table = null,
-                _model = null;
-            for(var key in models){
-                _model = models[key];
-                _table = _model.getMeta('table');
-                if (_table&&!models[_table]){
-                    _tran.query(_model.getCreateSql());
-                }
-            }
-
-            _tran.on('error', function (sender, err){
-                _defer.reject(err);
-            }).on('finally', function (sender, data){
-                _defer.resolve(data);
-            }).commit();
-
-            return _defer.promise;
         }
     }
 });
