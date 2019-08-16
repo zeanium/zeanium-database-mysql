@@ -5,15 +5,15 @@ var ConnectionPool = require('./mysql/ConnectionPool');
 
 module.exports = zn.Class({
     statics: {
-        getStore: function (config) {
+        getConnector: function (config) {
             return new this(config);
         }
     },
     properties: {
-        config: {
+        pool: {
             readonly: true,
             get: function (){
-                return this._config;
+                return this._pool;
             }
         }
     },
@@ -21,8 +21,7 @@ module.exports = zn.Class({
         init: {
             auto: true,
             value: function (inConfig){
-                this._config = zn.extend({}, inConfig);
-                this._pool = new ConnectionPool(this._config);
+                this._pool = new ConnectionPool(inConfig);
             }
         },
         beginTransaction: function (){
@@ -32,7 +31,7 @@ module.exports = zn.Class({
             return this._pool.query.apply(this._pool, arguments);
         },
         createDataBase: function () {
-            return this._pool.createDataBase(this._config.database);
+            return this._pool.createDataBase();
         }
     }
 });
