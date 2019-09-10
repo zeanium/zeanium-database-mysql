@@ -8,10 +8,12 @@ var __slice = Array.prototype.slice;
 module.exports = zn.Class({
     static: true,
     properties: {
-        SCHEMA: SCHEMA
+        SCHEMA: null,
+        parser: null
     },
     methods: {
         init: function (){
+            this.SCHEMA = SCHEMA;
             this.parser = new Parser(this);
         },
         paging: function (){
