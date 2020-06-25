@@ -15,6 +15,20 @@ module.exports = zn.Class({
         init: function (){
             this.SCHEMA = SCHEMA;
             this.parser = new Parser(this);
+            this._rights = " (zxnz_module_auth_Rights_Enabled = 0 or (zxnz_module_auth_Rights_Enabled <> 0 and zxnz_module_auth_UserExist({0}, zxnz_module_auth_Rights_Users, zxnz_module_auth_Rights_Roles) <> 0)) ";
+            this._observeRights = " (zxnz_module_auth_Rights_Enabled = 0 or (zxnz_module_auth_Rights_Enabled <> 0 and zxnz_module_auth_UserExist({0}, zxnz_module_auth_Rights_Observe_Users, zxnz_module_auth_Rights_Observe_Roles) <> 0)) ";
+        },
+        setRights: function (value){
+            this._rights = value;
+        },
+        setObserveRights: function (value){
+            this._observeRights = value;
+        },
+        rights: function (userId){
+            return this._rights.format(userId);
+        },
+        observeRights: function (userId){
+            return this._observeRights.format(userId);
         },
         paging: function (){
             return __slice.call(arguments).map(function (data){
