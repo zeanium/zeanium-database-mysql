@@ -169,11 +169,116 @@ module.exports = zn.Class({
                 case 'object':
                     var _fields = [];
                     zn.each(data, function (value, key){
-                        _fields.push(value + ' as ' + key);
+                        if(value && key) {
+                            _fields.push(value + ' as ' + key);
+                        }
                     });
 
                     return _fields.join(',');
             }
+        },
+        convertWhere: function (){
+            var _toString = Object.prototype.toString,
+                _argv = arguments,
+                _where = [],
+                _value = null;
+            for(var i = 0, _len = _argv.length; i < _len; i++) {
+                _value = _argv[i];
+                if(!_value) continue;
+                switch(_toString.call(_value)) {
+                    case '[object String]':
+                        _where.push(_value);
+                        break;
+                    case '[object Object]':
+                        _where.push(this.parseWhere(_value, false));
+                        break;
+                    case '[object Array]':
+                        _where.push(this.convertWhere.apply(this, _value));
+                        break;
+                    case '[object Function]':
+                        _value = _value(_where, this);
+                        if(_value !== false){
+                            _where.push(this.convertWhere.apply(this, [_value]));
+                        }
+                        break;
+                }
+            }
+
+            return _where.join(' ');
+        },
+        convertWheres: function (){
+            var _toString = Object.prototype.toString,
+                _argvs = arguments,
+                _argv = null,
+                _operator = null,
+                _value = null,
+                _ands = [],
+                _ors = [];
+            for(var i = 0, _len = _argvs.length; i < _len; i++) {
+                _argv = _argvs[i];
+                if(!_argv) continue;
+                _operator = 'and';
+                switch(_toString.call(_argv)) {
+                    case '[object String]':
+                        _value = _argv;
+                        break;
+                    case '[object Object]':
+                        if(!Object.keys(_argv).length) continue;
+                        if(_argv.value && _argv.operator) {
+                            _value = this.parseWhere(_argv.value, false);
+                            _operator = _argv.operator;
+                        }else{
+                            _value = this.parseWhere(_argv, false);
+                        }
+                        break;
+                    case '[object Array]':
+                        _value = this.parseWhere(_argv, false);
+                        break;
+                    case '[object Function]':
+                        _argv = _argv(_argvs, this);
+                        if(_argv !== false){
+                            if(_toString.call(_argv) == '[object Object]'){
+                                if(!Object.keys(_argv).length) continue;
+                                if(_argv.value && _argv.operator) {
+                                    _value = this.parseWhere(_argv.value, false);
+                                    _operator = _argv.operator;
+                                }else{
+                                    _value = this.parseWhere(_argv, false);
+                                }
+                            }else{
+                                _value = this.parseWhere(_argv, false);
+                            }
+                        }
+                        break;
+                }
+                
+                
+                if(_operator.indexOf('or') != -1){
+                    _ors.push("(" + _value + ")");
+                } else {
+                    _ands.push("(" + _value + ")");
+                }
+            }
+
+            var _where = '';
+            if(_ands.length){
+                _where = _ands.join(' and ');
+            }
+
+            if(_ors.length == 1){
+                _where += ' or ' + _ors[0];
+            }else if(_ors.length > 1){
+                _where += ' or (' + _ors.join(' or ') + ')';
+            }
+
+            if(_where.slice(0, 4) == 'and '){
+                _where = _where.substring(4);
+            }
+            if(_where.slice(0, 3) == 'or '){
+                _where = _where.substring(3);
+            }
+
+            return _where;
         },
         parseWhere: function (where, addKeyWord){
             where = this.fire('parseWhere', where, addKeyWord) || where;

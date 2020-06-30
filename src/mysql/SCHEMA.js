@@ -8,7 +8,7 @@ var MYSQL = {
         SHOW: 'show tables;',
         CREATE: 'drop table if exists {table};create table {table} ({fields}) engine=innodb default charset=utf8;',
         SELECT: "select {fields} from {table} {where} {order} {group} {limit};",
-        PAGING: "select {fields} from {table} {where} {order} {group} {limit};select count(id) as count from {table} {where};"
+        PAGING: "select {fields} from {table} {where} {order} {group} {limit};select count(zxnz_ID) as count from {table} {where};"
     },
     FIELD: {
         ADD: 'alter table {table} add {field};',
