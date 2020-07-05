@@ -2,33 +2,65 @@
  * Created by yangyxu on 9/17/14.
  */
 var ConnectionPool = require('./mysql/ConnectionPool');
+var ConnectionPoolTransaction = require('./mysql/ConnectionPoolTransaction');
+var ConnectionTransaction = require('./mysql/ConnectionTransaction');
 
 module.exports = zn.Class({
     statics: {
-        getConnector: function (config) {
-            return new this(config);
+        getConnector: function (config, events) {
+            return new this(config, events);
         }
     },
     properties: {
-        pool: {
-            readonly: true,
-            get: function (){
-                return this._pool;
-            }
-        }
+        config: null,
+        pool: null
     },
     methods: {
         init: {
             auto: true,
-            value: function (inConfig){
-                this._pool = new ConnectionPool(inConfig);
+            value: function (inConfig, inEvents){
+                this._config = inConfig;
+                this._pool = new ConnectionPool(inConfig, inEvents);
             }
         },
-        beginTransaction: function (){
-            return this._pool.beginTransaction();
+        createPoolTransaction: function (events) {
+            var _transaction = new ConnectionPoolTransaction(this._pool, events);
+            _transaction.on('finally', function (){
+                _transaction = null;
+                delete _transaction;
+            });
+            return _transaction;
+        },
+        createTransaction: function (events){
+            var _transaction = new ConnectionTransaction(this._config, events);
+            _transaction.on('finally', function (){
+                _transaction = null;
+                delete _transaction;
+            });
+            return _transaction;
+        },
+        beginPoolTransaction: function (events, before, after){
+            return this.createPoolTransaction(events).begin(before, after);
+        },
+        beginTransaction: function (events, before, after){
+            return this.createTransaction(events).begin(before, after);
+        },
+        getPool: function (){
+            return this._pool;
         },
         query: function (){
+            return this._pool.fastQuery.apply(this._pool, arguments);
+        },
+        poolQuery: function (){
             return this._pool.query.apply(this._pool, arguments);
+        },
+        createConnection: function (config, events){
+            var _connection = node_mysql.createConnection(config),
+                _events = events || {};
+            _connection.on('error', _events.error);
+            _connection.on('end', _events.end);
+
+            return _connection;
         },
         createDataBase: function () {
             return this._pool.createDataBase();

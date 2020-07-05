@@ -1,91 +1,126 @@
 /**
  * Created by yangyxu on 8/20/14.
  */
-var ConnectionPool = require('../core/ConnectionPool');
-var Connection = require('./Connection');
 var node_mysql = require('mysql');
-var SCHEMA = require('./SCHEMA');
+var __slice = Array.prototype.slice;
 
-module.exports = zn.Class(ConnectionPool, {
+module.exports = zn.Class({
+    events: ['acquire', 'connection', 'enqueue', 'release', 'end', 'error'],
+    properties: {
+        config: null,
+        pool: null
+    },
     methods: {
-        init: function (config){
+        init: function (config, events){
+            this.initPool(config);
+            this.initEvents(events);
+        },
+        initPool: function (config){
             this._config = zn.extend({
                 acquireTimeout: 20000,
-                connectionLimit: 50,
+                connectionLimit: 100,
                 dateStrings: true,
                 multipleStatements: true
             }, config);
-
             this._pool = node_mysql.createPool(this._config);
-        },
-        setConfig: function (config){
-            return this._config = config, this;
-        },
-        getConnection: function(callback){
-            this._pool.getConnection(function (err, connection){
-                callback && callback(err, connection);
+            this._pool.on('acquire', function (connection){
+                zn.debug('Mysql connection pool acquire: ' + connection.threadId);
+                this.fire('acquire', connection);
+            }.bind(this));
+            this._pool.on('connection', function (connection){
+                zn.debug('Mysql connection pool connection: ' + connection.threadId);
+                this.fire('connection', connection);
+            }.bind(this));
+            this._pool.on('enqueue', function (connection){
+                zn.debug('Mysql connection pool enqueue: ' + connection.threadId);
+                this.fire('enqueue', connection);
+            }.bind(this));
+            this._pool.on('release', function (connection){
+                zn.debug('Mysql connection pool release: ' + connection.threadId);
+                this.fire('release', connection);
             }.bind(this));
 
             return this;
         },
-        createDataBase: function (database){
-            var _defer = zn.async.defer();
-            var _config = zn.extend({}, this._config),
-                _database = database || _config.database,
-                _sql = SCHEMA.DATABASE.CREATE.format({ database: _database });
-            _config.database = null;
-            delete _config.database;
-            zn.debug('Create Database: ', _config, _sql);
-            node_mysql.createConnection(_config)
-                .query(_sql, function (err, rows, fields){
-                    if(err){
-                        zn.error(err);
-                        _defer.reject(err);
-                    }else {
-                        _defer.resolve(rows);
-                    }
-                });
-
-            return _defer.promise;
-        },
-        query: function (){
-            var _argv = Array.prototype.slice.call(arguments),
-                _sql = _argv.shift();
-            if(_argv.length){
-                _sql = _sql.format(_argv);
+        initEvents: function (events){
+            if(events && typeof events == 'object'){
+                for(var key in events){
+                    this.on(key, events[key]);
+                }
             }
 
-            return this.__query(_sql);
+            return this;
         },
-        __query: function (sql){
-            var _defer = zn.async.defer();
-            this.__getNativeConnection(function (connection){
-                zn.debug('Exec Sql: ' + sql);
-                connection.query(sql, function (err, rows){
-                    if(err){
-                        zn.error(err);
-                        _defer.reject(err);
-                    }else {
-                        _defer.resolve(rows);
-                    }
+        end: function (){
+            if(!this._pool){
+                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+            }
 
-                    connection.release();
-                });
-            }, function (err){
-                _defer.reject(err);
-            });
+            return this._pool.end(function (err) {
+                if(err){
+                    this.fire('error', err);
+                }
+                this.fire('end', err);
+            }.bind(this)), this;
+        },
+        getConnection: function(callback){
+            if(!this._pool){
+                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+            }
+
+            return this._pool.getConnection(function (err, connection){
+                if(err){
+                    this.fire('error', err);
+                }
+                callback && callback(err, connection, this._pool);
+            }.bind(this)), this;
+        },
+        query: function (){
+            if(!this._pool){
+                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+            }
+            var _defer = zn.async.defer(),
+                _argv = __slice.call(arguments),
+                _sql = _argv.shift();
+            if(typeof _sql == 'string' && _argv.length) _sql = _sql.format(_argv);
+            this._pool.getConnection(function (err, connection){
+                if (err){
+                    _defer.reject(err);
+                    this.fire('error', err);
+                }else {
+                    zn.debug('Query: ', _sql);
+                    connection.query(_sql, function (err, rows, fields){
+                        connection.release();
+                        if(err){
+                            _defer.reject(err);
+                            this.fire('error', err);
+                        }else {
+                            _defer.resolve(rows, fields, this._pool);
+                        }
+                    }.bind(this));
+                }
+            }.bind(this));
 
             return _defer.promise;
         },
-        __getNativeConnection: function (success, error){
-            this._pool.getConnection(function (err, connection){
-                if (err){
-                    zn.error(err);
-                    error && error(err);
+        fastQuery: function (){
+            if(!this._pool){
+                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+            }
+            var _defer = zn.async.defer(),
+                _argv = __slice.call(arguments),
+                _sql = _argv.shift();
+            if(typeof _sql == 'string' && _argv.length) _sql = _sql.format(_argv);
+            this._pool.query(_sql, function (err, rows, fields){
+                if(err){
+                    _defer.reject(err);
+                    this.fire('error', err);
                 }else {
-                    success && success(connection);
+                    _defer.resolve(rows, fields, this._pool);
                 }
             }.bind(this));
+
+            return _defer.promise;
         }
     }
 });
