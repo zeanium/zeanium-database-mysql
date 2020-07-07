@@ -3,6 +3,7 @@
  */
 var node_mysql = require('mysql');
 var Transaction = require('./Transaction');
+const _argv = require('../../../zeanium-cli/__/__');
 var __slice = Array.prototype.slice;
 
 module.exports = zn.Class(Transaction, {
@@ -54,7 +55,9 @@ module.exports = zn.Class(Transaction, {
                 var _before = before && before.call(_self, rows, fields, _self);
                 if(_before === false){
                     task.stop(new Error('Transcation commit: before call return false.'));
-                }else{
+                } else if(_before instanceof Error){
+                    task.error(_before);
+                } else{
                     connection.commit(function (err, rows, fields){
                         var _after = after && after.call(_self, err, rows, fields, _self);
                         _self.fire('commit', [err, rows, fields], { ownerFirst: true, method: 'apply' });
@@ -63,6 +66,8 @@ module.exports = zn.Class(Transaction, {
                         }else {
                             if(_after === false){
                                 task.stop(new Error('Transcation commit: after call return false.'));
+                            } else if(_after instanceof Error){
+                                task.error(_after);
                             } else {
                                 task.done(connection, (_after || rows), fields);
                                 _self._defer.resolve((_after || rows), fields);

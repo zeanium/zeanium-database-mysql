@@ -161,6 +161,8 @@ module.exports = zn.Class({
                 }
                 if(_callback === false){
                     task.stop(new Error('Transcation: before call return false.'));
+                } else if(_callback instanceof Error){
+                    task.error(_callback);
                 } else if(_callback === -1){
                     task.done(connection, rows, fields);
                 } else {
@@ -171,7 +173,9 @@ module.exports = zn.Class({
                         var _after = after && after.call(this, null, _callback || rows, fields, this);
                         if(_after === false){
                             task.stop(new Error('Transcation: after call return false.'));
-                        }else{
+                        } else if(_after instanceof Error){
+                            task.error(_after);
+                        } else{
                             task.done(connection, _after || rows, fields);
                         }
                     }
@@ -190,6 +194,8 @@ module.exports = zn.Class({
                 }
                 if(_callback === false){
                     task.stop(new Error('Transcation: before call return false.'));
+                } else if(_callback instanceof Error){
+                    task.error(_callback);
                 } else if(_callback === -1){
                     task.done(connection, rows, fields);
                 } else {
@@ -199,6 +205,8 @@ module.exports = zn.Class({
                             this.fire('query', [null, data, null], { ownerFirst: true, method: 'apply' });
                             if(_after === false){
                                 task.stop(new Error('Transcation: after call return false.'));
+                            } else if(_after instanceof Error){
+                                task.error(_after);
                             } else {
                                 task.done(connection, (_after || data), null);
                             }
@@ -217,6 +225,8 @@ module.exports = zn.Class({
                             }else {
                                 if(_after === false){
                                     task.stop(new Error('Transcation: after call return false.'));
+                                } else if(_after instanceof Error){
+                                    task.error(_after);
                                 } else {
                                     task.done(connection, (_after || rows), fields);
                                 }
