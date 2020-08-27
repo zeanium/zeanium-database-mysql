@@ -61,9 +61,9 @@ module.exports = zn.Class(Transaction, {
                     task.stop(new Error('Transcation commit: before call return false.'));
                 }else{
                     zn.debug('Transaction: commit');
-                    connection.query('COMMIT', function (err, rows, fields){
-                        var _after = after && after.call(_self, err, rows, fields, _self);
-                        _self.fire('commit', [err, rows, fields], { ownerFirst: true, method: 'apply' });
+                    connection.query('COMMIT', function (err, commitRows, commitFields){
+                        var _after = after && after.call(_self, err, commitRows, commitFields, _self);
+                        _self.fire('commit', [err, commitRows, commitFields], { ownerFirst: true, method: 'apply' });
                         if(err){
                             task.error(err);
                         }else {
@@ -86,7 +86,7 @@ module.exports = zn.Class(Transaction, {
                 return this;
             }
             this.fire('error', error);
-            zn.debug('Transaction: rollback');
+            zn.error('Transaction rollback - ', error);
             this._connection.query('ROLLBACK', function (err, rows, fields){
                 this.fire('rollback', [err, rows, fields], { ownerFirst: true, method: 'apply' });
                 var _callback = callback && callback.call(this, err, rows, fields);

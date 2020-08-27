@@ -58,9 +58,9 @@ module.exports = zn.Class(Transaction, {
                 } else if(_before instanceof Error){
                     task.error(_before);
                 } else{
-                    connection.commit(function (err, rows, fields){
-                        var _after = after && after.call(_self, err, rows, fields, _self);
-                        _self.fire('commit', [err, rows, fields], { ownerFirst: true, method: 'apply' });
+                    connection.commit(function (err, commitRows, commitFields){
+                        var _after = after && after.call(_self, err, commitRows, commitFields, _self);
+                        _self.fire('commit', [err, commitRows, commitFields], { ownerFirst: true, method: 'apply' });
                         if(err){
                             task.error(err);
                         }else {

@@ -29,16 +29,55 @@ module.exports = zn.Class({
             });
         },
         __formatSqlValue: function (value){
-            if(zn.is(value, 'string') && value!=='now()'){
-                if(value.indexOf('{{') === 0 && value.indexOf('}}') === (value.length-2)){
-                    value = value.substring(2, value.length - 2);
-                }else {
-                    value = "'" + value + "'";
-                }
-            }else if (zn.is(value, 'function')){
-                value = value.call(this._context);
+            switch(zn.type(value)) {
+                case 'string':
+                    if(value!=='now()'){
+                        if(value.indexOf('{{') === 0 && value.indexOf('}}') === (value.length-2)){
+                            value = value.substring(2, value.length - 2);
+                        }else {
+                            value = "'" + value + "'";
+                        }
+                    }
+                    break;
+                case 'function':
+                    value = value.call(this._context);
+                    break;
+                case 'object':
+                    value = zn.overwrite(value, {
+                        andOr: 'and',
+                        opt: '='
+                    });
+
+                    var _val = value.value;
+                    if(_val == null) {
+                        _val = '';
+                    }
+                    switch (value.opt) {
+                        case '=':
+                        case '>':
+                        case '<':
+                        case '>=':
+                        case '<=':
+                        case '<>':
+                            _val = this.__equal(_val);
+                            break;
+                        case '%':
+                        case 'like':
+                            value.opt = 'like';
+                            _val = this.__like(_val);
+                            break;
+                        case 'in':
+                        case 'not in':
+                            _val = this.__in(_val);
+                        case 'between':
+                        case 'not between':
+                            _val = this.__betweenAnd(_val);
+                            break;
+                    }
+                    value = [value.andOr, value.key, value.opt, _val].join(' ');
+                    break;
             }
-        
+
             return value;
             //return isNaN(value) ? ("'"+value+"'") : value;
         },
@@ -51,14 +90,14 @@ module.exports = zn.Class({
             zn.each(data || {}, function (value, key){
                 key = key.toLowerCase();
                 _key = this.__firstCharUpperCase(key);
-                _value = (this["parse" + _key] && this["parse" + _key].call(this, value)) || '';
+                _value = (this["parse" + _key] && this["parse" + _key].call(this, value, data)) || '';
                 if(_value){
                     _data[key] = " " + _value + " ";
                 }
             }.bind(this));
             return zn.overwrite(_data, VALUES.DEFAULTS);
         },
-        parseTable: function (table){
+        parseTable: function (table, data){
             table = this.fire('parseTable', table) || table;
             switch (zn.type(table)){
                 case 'string':
@@ -67,7 +106,7 @@ module.exports = zn.Class({
                     return "(" + (table.call(this._context)||'') + ")";
             }
         },
-        parseGroup: function (group){
+        parseGroup: function (group, data){
             group = this.fire('parseGroup', group) || group;
             if(zn.is(group, 'function')){
                 group = group.call(this._context);
@@ -87,7 +126,7 @@ module.exports = zn.Class({
             }
             return _val;
         },
-        parseOrder: function (order){
+        parseOrder: function (order, data){
             order = this.fire('parseOrder', order) || order;
             if(zn.is(order, 'function')){
                 order = order.call(this._context);
@@ -115,50 +154,55 @@ module.exports = zn.Class({
 
             return _val;
         },
-        parseValues: function (data){
-            data = this.fire('parseValues', data) || data;
-            if(zn.is(data, 'function')){
-                data = data.call(this._context);
+        parseValues: function (values, data){
+            values = this.fire('parseValues', values) || values;
+            if(zn.is(values, 'function')){
+                values = values.call(this._context);
             }
-            switch (zn.type(data)){
+            var _prefix = data.prefix || '';
+            switch (zn.type(values)){
                 case 'string':
-                    return data;
+                    return values;
                 case 'object':
                     var _keys = [],
                         _values = [];
-                    zn.each(data, function (value, key){
-                        _keys.push(key);
-                        _values.push(this.__formatSqlValue(value));
+                    zn.each(values, function (value, key){
+                        if(value != null) {
+                            _keys.push(_prefix + key);
+                            _values.push(this.__formatSqlValue(value));
+                        }
                     }.bind(this));
 
                     return "({0}) values ({1})".format(_keys.join(','), _values.join(','));
             }
         },
-        parseSets: function (data){
-            return this.parseUpdates(data);
+        parseSets: function (updates, data){
+            return this.parseUpdates(updates, data);
         },
-        parseUpdates: function (data){
-            data = this.fire('parseUpdates', data) || data;
-            if(zn.is(data, 'function')){
-                data = data.call(this._context);
+        parseUpdates: function (updates, data){
+            updates = this.fire('parseUpdates', updates) || updates;
+            if(zn.is(updates, 'function')){
+                updates = updates.call(this._context);
             }
-            switch (zn.type(data)){
+            var _prefix = data.prefix || '';
+            switch (zn.type(updates)){
                 case 'string':
-                    return data;
+                    return updates;
                 case 'object':
                     var _updates = [];
-                    zn.each(data, function (value, key){
-                        _updates.push(key + ' = ' + this.__formatSqlValue(value));
+                    zn.each(updates, function (value, key){
+                        _updates.push(_prefix + key + ' = ' + this.__formatSqlValue(value));
                     }.bind(this));
 
                     return _updates.join(',');
             }
         },
-        parseFields: function (fields){
+        parseFields: function (fields, data){
             fields = this.fire('parseFields', fields) || fields;
             if(zn.is(fields, 'function')){
                 fields = fields.call(this._context);
             }
+            var _prefix = data.prefix || '';
             switch (zn.type(fields)){
                 case 'string':
                     return fields;
@@ -168,9 +212,9 @@ module.exports = zn.Class({
                     return fields.join(',');
                 case 'object':
                     var _fields = [];
-                    zn.each(data, function (value, key){
+                    zn.each(fields, function (value, key){
                         if(value && key) {
-                            _fields.push(value + ' as ' + key);
+                            _fields.push(_prefix + value + ' as ' + key);
                         }
                     });
 
@@ -190,10 +234,16 @@ module.exports = zn.Class({
                         _where.push(_value);
                         break;
                     case '[object Object]':
-                        _where.push(this.parseWhere(_value, false));
+                        _value = this.parseWhere(_value, false);
+                        if(_value){
+                            _where.push(_value);
+                        }
                         break;
                     case '[object Array]':
-                        _where.push(this.convertWhere.apply(this, _value));
+                        _value = this.convertWhere.apply(this, _value);
+                        if(_value){
+                            _where.push(_value);
+                        }
                         break;
                     case '[object Function]':
                         _value = _value(_where, this);
@@ -301,14 +351,209 @@ module.exports = zn.Class({
                                 _values.push(value);
                                 break;
                             case 'object':
+                                if(value.name && value.value) {
+                                    zn.overwrite(value, {
+                                        andOr: 'and',
+                                        opt: '='
+                                    });
+                                    var _val = value.value;
+                                    if(_val == null) {
+                                        _val = '';
+                                    }
+                                    switch (value.opt) {
+                                        case '=':
+                                        case '>':
+                                        case '<':
+                                        case '>=':
+                                        case '<=':
+                                        case '<>':
+                                            _val = this.__equal(_val);
+                                            break;
+                                        case 'regexp^':
+                                            value.opt = 'regexp';
+                                            _val = "'^" + _val + "'";
+                                            break;
+                                        case 'regexp$':
+                                            value.opt = 'regexp';
+                                            _val = "'" + _val + "$'";
+                                            break;
+                                        case '%':
+                                        case 'like':
+                                            value.opt = 'like';
+                                            _val = this.__like(_val);
+                                            break;
+                                        case 'left-like':
+                                            value.opt = 'like';
+                                            _val = "'%" + _val + "'";
+                                            break;
+                                        case 'right-like':
+                                            value.opt = 'like';
+                                            _val = "'" + _val + "%'";
+                                            break;
+                                        case 'in':
+                                        case 'not in':
+                                            _val = this.__in(_val);
+                                        case 'between':
+                                        case 'not between':
+                                            _val = this.__betweenAnd(_val);
+                                            break;
+                                    }
+                                    value = [value.andOr, value.name, value.opt, _val];
+                                    _values.push(value.join(' '));
+                                } else {
+                                    for(var key in value) {
+                                        var _field = value[key];
+                                        zn.overwrite(_field, {
+                                            andOr: 'and',
+                                            opt: '='
+                                        });
+                                        var _val = _field.value;
+                                        if(_val == null) {
+                                            _val = '';
+                                        }
+                                        switch (_field.opt) {
+                                            case '=':
+                                            case '>':
+                                            case '<':
+                                            case '>=':
+                                            case '<=':
+                                            case '<>':
+                                                _val = this.__equal(_val);
+                                                break;
+                                            case 'regexp^':
+                                                _field.opt = 'regexp';
+                                                _val = "'^" + _val + "'";
+                                                break;
+                                            case 'regexp$':
+                                                _field.opt = 'regexp';
+                                                _val = "'" + _val + "$'";
+                                                break;
+                                            case '%':
+                                            case 'like':
+                                                _field.opt = 'like';
+                                                _val = this.__like(_val);
+                                                break;
+                                            case 'left-like':
+                                                _field.opt = 'like';
+                                                _val = "'%" + _val + "'";
+                                                break;
+                                            case 'right-like':
+                                                _field.opt = 'like';
+                                                _val = "'" + _val + "%'";
+                                                break;
+                                            case 'in':
+                                            case 'not in':
+                                                _val = this.__in(_val);
+                                            case 'between':
+                                            case 'not between':
+                                                _val = this.__betweenAnd(_val);
+                                                break;
+                                        }
+                                        _field = [_field.andOr, key || _field.name, _field.opt, _val];
+                                        _values.push(_field.join(' '));
+                                    }
+                                }
+                                break;
+                            case 'array':
+                                _values.push(value.join(' '));
+                                break;
+                        }
+                    }.bind(this));
+
+                    _return = _values.join(' ');
+                    break;
+                case 'object':
+                    zn.each(where, function (value, key){
+                        if(value == null || key == null){
+                            return -1;
+                        }
+                        if(zn.is(value, 'string')){
+                            if(key.indexOf('&') == -1 && key.indexOf('|') == -1){
+                                _values.push('and ' + key + ' = ' + this.__formatSqlValue(value));
+                            }else {
+                                var _piecs = key.indexOf('_'),
+                                    _andOr = _piecs[0] || '&',
+                                    _key = _piecs[1],
+                                    _opt = _piecs[2];
+                                switch (_opt) {
+                                    case '=':
+                                    case '>':
+                                    case '<':
+                                    case '>=':
+                                    case '<=':
+                                    case '<>':
+                                        value = this.__equal(value);
+                                        break;
+                                    case 'regexp^':
+                                        _opt = 'regexp';
+                                        value = "'^" + value + "'";
+                                        break;
+                                    case 'regexp$':
+                                        _opt = 'regexp';
+                                        value = "'" + value + "$'";
+                                        break;
+                                    case '%':
+                                    case 'like':
+                                        _opt = 'like';
+                                        value = this.__like(value);
+                                        break;
+                                    case 'left-like':
+                                        _opt = 'like';
+                                        value = "'%" + value + "'";
+                                        break;
+                                    case 'right-like':
+                                        _opt = 'like';
+                                        value = "'" + value + "%'";
+                                        break;
+                                    case 'in':
+                                    case 'not in':
+                                        value = this.__in(value);
+                                    case 'between':
+                                    case 'not between':
+                                        value = this.__betweenAnd(value);
+                                        break;
+                                }
+                                _values.push([(_andOr=='&'?'and':'or'), _key, _opt, value].join(' '));
+                            }
+                        }else if(zn.is(value, 'object')){
+                            if(value.name || value.value || value.opt) {
                                 zn.overwrite(value, {
                                     andOr: 'and',
                                     opt: '='
                                 });
-                                var _val = value.value||'';
+                                var _val = value.value;
+                                if(_val == null) {
+                                    _val = '';
+                                }
                                 switch (value.opt) {
+                                    case '=':
+                                    case '>':
+                                    case '<':
+                                    case '>=':
+                                    case '<=':
+                                    case '<>':
+                                        _val = this.__equal(_val);
+                                        break;
+                                    case 'regexp^':
+                                        value.opt = 'regexp';
+                                        _val = "'^" + _val + "'";
+                                        break;
+                                    case 'regexp$':
+                                        value.opt = 'regexp';
+                                        _val = "'" + _val + "$'";
+                                        break;
+                                    case '%':
                                     case 'like':
+                                        value.opt = 'like';
                                         _val = this.__like(_val);
+                                        break;
+                                    case 'left-like':
+                                        value.opt = 'like';
+                                        _val = "'%" + _val + "'";
+                                        break;
+                                    case 'right-like':
+                                        value.opt = 'like';
+                                        _val = "'" + _val + "%'";
                                         break;
                                     case 'in':
                                     case 'not in':
@@ -318,61 +563,65 @@ module.exports = zn.Class({
                                         _val = this.__betweenAnd(_val);
                                         break;
                                 }
-                                value = [value.andOr, value.key, value.opt, _val];
-                            case 'array':
+                                value = [value.andOr, value.name || key, value.opt, _val];
                                 _values.push(value.join(' '));
-                                break;
-
-                        }
-                    }.bind(this));
-
-                    _return = _values.join(' ');
-                    break;
-                case 'object':
-                    var _ors = [];
-                    zn.each(where, function (value, key){
-                        if(value == null || key == null){
-                            return -1;
-                        }
-                        if(key.indexOf('&') == -1 && key.indexOf('|') == -1){
-                            _values.push(key + ' = ' + this.__formatSqlValue(value));
-                        }else {
-                            if(key.indexOf('&') != -1){
-                                switch (key.split('&')[1]) {
-                                    case 'like':
-                                        value = this.__like(value);
-                                        break;
-                                    case 'in':
-                                    case 'not in':
-                                        value = this.__in(value);
-                                    case 'between':
-                                    case 'not between':
-                                        value = this.__betweenAnd(value);
-                                        break;
+                            } else {
+                                for(var key in value) {
+                                    var _field = value[key];
+                                    zn.overwrite(_field, {
+                                        andOr: 'and',
+                                        opt: '='
+                                    });
+                                    var _val = _field.value;
+                                    if(_val == null) {
+                                        _val = '';
+                                    }
+                                    switch (_field.opt) {
+                                        case '=':
+                                        case '>':
+                                        case '<':
+                                        case '>=':
+                                        case '<=':
+                                        case '<>':
+                                            _val = this.__equal(_val);
+                                            break;
+                                        case 'regexp^':
+                                            value.opt = 'regexp';
+                                            _val = "'^" + _val + "'";
+                                            break;
+                                        case 'regexp$':
+                                            value.opt = 'regexp';
+                                            _val = "'" + _val + "$'";
+                                            break;
+                                        case '%':
+                                        case 'like':
+                                            _field.opt = 'like';
+                                            _val = this.__like(_val);
+                                            break;
+                                        case 'left-like':
+                                            _field.opt = 'like';
+                                            _val = "'%" + _val + "'";
+                                            break;
+                                        case 'right-like':
+                                            _field.opt = 'like';
+                                            _val = "'" + _val + "%'";
+                                            break;
+                                        case 'in':
+                                        case 'not in':
+                                            _val = this.__in(_val);
+                                        case 'between':
+                                        case 'not between':
+                                            _val = this.__betweenAnd(_val);
+                                            break;
+                                    }
+                                    _field = [_field.andOr, _field.name || key, _field.opt, _val];
+                                    _values.push(_field.join(' '));
                                 }
-                                _values.push(key.replace('&', ' ') + ' ' + value);
-                            }else if (key.indexOf('|') != -1) {
-                                switch (key.split('|')[1]) {
-                                    case 'like':
-                                        value = this.__like(value);
-                                        break;
-                                    case 'in':
-                                    case 'not in':
-                                        value = this.__in(value);
-                                    case 'between':
-                                    case 'not between':
-                                        value = this.__betweenAnd(value);
-                                        break;
-                                }
-                                _ors.push(key.replace('|', ' ') + ' ' + value);
                             }
                         }
                     }.bind(this));
 
-                    _return = _values.join(' and ');
-                    if(_ors.length){
-                        _return = _return + ' or ' + _ors.join(' or ');
-                    }
+                    _return = _values.join(' ');
                     break;
             }
 
@@ -390,6 +639,25 @@ module.exports = zn.Class({
 
             return _return;
         },
+        __equal: function (value){
+            switch(typeof value) {
+                case 'string':
+                    if(value.indexOf('{{') === 0 && value.indexOf('}}') === (value.length-2)){
+                        value = value.substring(2, value.length - 2);
+                    }else {
+                        value = "'" + value + "'";
+                    }
+                    return value;
+                case 'number':
+                    return value;
+                case 'array':
+                    return "('" + value.join("','") + "')";
+                case 'object':
+                    return "'" + JSON.stringify(value) + "'";
+                case 'function':
+                    return value(this);
+            }
+        },
         __like: function (value){
             return "'%" + value + "%'";
         },
@@ -404,11 +672,15 @@ module.exports = zn.Class({
                 ins = ins.call(this._context);
             }
             ins = ins || '0';
-            if(zn.is(ins, 'array')){
-                ins = ins.join(',');
+            if(zn.is(ins, 'array') && ins.length){
+                if(typeof ins[0] == 'string'){
+                    ins = "'" + ins.join("','") + "'";
+                }else if(typeof ins[0] == 'number'){
+                    ins = ins.join(",");
+                }
             }
 
-            return '('+_val+')';
+            return '(' + ins + ')';
         },
         __betweenAnd: function (between){
             if(zn.is(between, 'function')){
@@ -418,7 +690,7 @@ module.exports = zn.Class({
                 case 'string':
                     return between;
                 case 'array':
-                    return 'between ' + between[0] + ' and ' + between[1];
+                    return between[0] + ' and ' + between[1];
             }
         }
     }

@@ -160,7 +160,7 @@ module.exports = zn.Class({
                     }
                 }
                 if(_callback === false){
-                    task.stop(new Error('Transcation: before call return false.'));
+                    task.stop('Transcation: before call return false.');
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
@@ -168,11 +168,11 @@ module.exports = zn.Class({
                 } else {
                     _callback = handler.call(this, task, connection, rows, fields);
                     if(_callback === false){
-                        task.stop(new Error('Transcation: handler call return false.'));
+                        task.stop('Transcation: handler call return false.');
                     } else {
                         var _after = after && after.call(this, null, _callback || rows, fields, this);
                         if(_after === false){
-                            task.stop(new Error('Transcation: after call return false.'));
+                            task.stop('Transcation: after call return false.');
                         } else if(_after instanceof Error){
                             task.error(_after);
                         } else{
@@ -193,7 +193,7 @@ module.exports = zn.Class({
                     }
                 }
                 if(_callback === false){
-                    task.stop(new Error('Transcation: before call return false.'));
+                    task.stop('Transcation: before call return false.');
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
@@ -204,7 +204,7 @@ module.exports = zn.Class({
                             var _after = after && after.call(this, null, data, null, this);
                             this.fire('query', [null, data, null], { ownerFirst: true, method: 'apply' });
                             if(_after === false){
-                                task.stop(new Error('Transcation: after call return false.'));
+                                task.stop('Transcation: after call return false.');
                             } else if(_after instanceof Error){
                                 task.error(_after);
                             } else {
@@ -224,7 +224,7 @@ module.exports = zn.Class({
                                 task.error(err);
                             }else {
                                 if(_after === false){
-                                    task.stop(new Error('Transcation: after call return false.'));
+                                    task.stop('Transcation: after call return false.');
                                 } else if(_after instanceof Error){
                                     task.error(_after);
                                 } else {
