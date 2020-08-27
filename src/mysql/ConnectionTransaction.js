@@ -3,7 +3,6 @@
  */
 var node_mysql = require('mysql');
 var Transaction = require('./Transaction');
-const _argv = require('../../../zeanium-cli/__/__');
 var __slice = Array.prototype.slice;
 
 module.exports = zn.Class(Transaction, {
