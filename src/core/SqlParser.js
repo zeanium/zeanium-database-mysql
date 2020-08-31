@@ -98,7 +98,7 @@ module.exports = zn.Class({
             return zn.overwrite(_data, VALUES.DEFAULTS);
         },
         parseTable: function (table, data){
-            table = this.fire('parseTable', table) || table;
+            table = this.fire('parseTable', table, data) || table;
             switch (zn.type(table)){
                 case 'string':
                     return table;
@@ -107,7 +107,7 @@ module.exports = zn.Class({
             }
         },
         parseGroup: function (group, data){
-            group = this.fire('parseGroup', group) || group;
+            group = this.fire('parseGroup', group, data) || group;
             if(zn.is(group, 'function')){
                 group = group.call(this._context);
             }
@@ -127,7 +127,7 @@ module.exports = zn.Class({
             return _val;
         },
         parseOrder: function (order, data){
-            order = this.fire('parseOrder', order) || order;
+            order = this.fire('parseOrder', order, data) || order;
             if(zn.is(order, 'function')){
                 order = order.call(this._context);
             }
@@ -155,7 +155,7 @@ module.exports = zn.Class({
             return _val;
         },
         parseValues: function (values, data){
-            values = this.fire('parseValues', values) || values;
+            values = this.fire('parseValues', values, data) || values;
             if(zn.is(values, 'function')){
                 values = values.call(this._context);
             }
@@ -180,7 +180,7 @@ module.exports = zn.Class({
             return this.parseUpdates(updates, data);
         },
         parseUpdates: function (updates, data){
-            updates = this.fire('parseUpdates', updates) || updates;
+            updates = this.fire('parseUpdates', updates, data) || updates;
             if(zn.is(updates, 'function')){
                 updates = updates.call(this._context);
             }
@@ -198,7 +198,7 @@ module.exports = zn.Class({
             }
         },
         parseFields: function (fields, data){
-            fields = this.fire('parseFields', fields) || fields;
+            fields = this.fire('parseFields', fields, data) || fields;
             if(zn.is(fields, 'function')){
                 fields = fields.call(this._context);
             }
