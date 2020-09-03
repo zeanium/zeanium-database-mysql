@@ -217,6 +217,9 @@ module.exports = zn.Class({
                         }.bind(this));
                     }else {
                         zn.debug('Transaction query{0}: '.format(_tag!=query?' [ '+_tag+' ]':''), query);
+                        if(zn.is(query, 'array')){
+                            query = query.join(' ');
+                        }
                         connection.query(query, function (err, rows, fields){
                             var _after = after && after.call(this, err, rows, fields, this);
                             this.fire('query', [err, rows, fields], { ownerFirst: true, method: 'apply' });
