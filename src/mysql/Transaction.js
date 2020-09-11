@@ -190,6 +190,8 @@ module.exports = zn.Class({
                     _callback = before.call(this, query, rows, fields, this);
                     if(typeof _callback == 'string'){
                         query = _callback;
+                    }else if(zn.is(_callback, 'array')){
+                        query = _callback.join('');
                     }
                 }
                 if(_callback === false){
