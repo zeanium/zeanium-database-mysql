@@ -103,6 +103,7 @@ module.exports = zn.Class(Transaction, {
         destroy: function (){
             if(this._connection){
                 this._connection.release();
+                this._connection.removeAllListeners();
                 this._connection = null;
                 delete this._connection;
             }
