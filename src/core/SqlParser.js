@@ -39,6 +39,11 @@ module.exports = zn.Class({
                         }
                     }
                     break;
+                case 'array': 
+                    value = "'" + value.map(function (item){
+                        return item.toString();
+                    }.bind(this)).join(',') + "'";
+                    break;
                 case 'function':
                     value = value.call(this._context);
                     break;
