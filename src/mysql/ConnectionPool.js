@@ -5,7 +5,19 @@ var node_mysql = require('mysql');
 var __slice = Array.prototype.slice;
 
 module.exports = zn.Class({
-    events: ['acquire', 'connection', 'enqueue', 'release', 'end', 'error'],
+    events: [
+        'acquire', 
+        'connection', 
+        'enqueue', 
+        'release', 
+        'query',
+        'queryError',
+        'end', 
+        'endError', 
+        'poolNotExistError',
+        'poolConnection',
+        'poolConnectionError'
+    ],
     properties: {
         config: null,
         pool: null
@@ -54,31 +66,34 @@ module.exports = zn.Class({
         },
         end: function (){
             if(!this._pool){
-                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+                return this.fire('poolNotExistError', new Error('Mysql pool is not exist.')), this;
             }
 
             return this._pool.end(function (err) {
                 if(err){
-                    this.fire('error', err);
+                    this.fire('endError', err);
                 }
                 this.fire('end', err);
             }.bind(this)), this;
         },
         getConnection: function(callback){
             if(!this._pool){
-                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+                return this.fire('poolNotExistError', new Error('Mysql pool is not exist.')), this;
             }
 
             return this._pool.getConnection(function (err, connection){
                 if(err){
-                    this.fire('error', err);
+                    this.fire('poolConnectionError', err);
+                }else{
+                    this.fire('poolConnection', connection);
                 }
+
                 callback && callback(err, connection, this._pool);
             }.bind(this)), this;
         },
         query: function (){
             if(!this._pool){
-                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+                return this.fire('poolNotExistError', new Error('Mysql pool is not exist.')), this;
             }
             var _defer = zn.async.defer(),
                 _argv = __slice.call(arguments),
@@ -87,14 +102,15 @@ module.exports = zn.Class({
             this._pool.getConnection(function (err, connection){
                 if (err){
                     _defer.reject(err);
-                    this.fire('error', err);
+                    this.fire('connectionError', err);
                 }else {
                     zn.debug('Query: ', _sql);
+                    this.fire('query', _sql);
                     connection.query(_sql, function (err, rows, fields){
                         connection.release();
                         if(err){
                             _defer.reject(err);
-                            this.fire('error', err);
+                            this.fire('queryError', err);
                         }else {
                             _defer.resolve(rows, fields, this._pool);
                         }
@@ -106,16 +122,17 @@ module.exports = zn.Class({
         },
         fastQuery: function (){
             if(!this._pool){
-                return this.fire('error', new Error('Mysql pool is not exist.')), this;
+                return this.fire('poolNotExistError', new Error('Mysql pool is not exist.')), this;
             }
             var _defer = zn.async.defer(),
                 _argv = __slice.call(arguments),
                 _sql = _argv.shift();
             if(typeof _sql == 'string' && _argv.length) _sql = _sql.format(_argv);
+            this.fire('query', _sql);
             this._pool.query(_sql, function (err, rows, fields){
                 if(err){
                     _defer.reject(err);
-                    this.fire('error', err);
+                    this.fire('queryError', err);
                 }else {
                     _defer.resolve(rows, fields, this._pool);
                 }

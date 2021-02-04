@@ -2,6 +2,7 @@
  * Created by yangyxu on 8/20/14.
  */
 var __slice = Array.prototype.slice;
+const zn = require('../../../zeanium/dist/zn');
 var Transaction = require('./Transaction');
 module.exports = zn.Class(Transaction, {
     methods: {
@@ -12,16 +13,35 @@ module.exports = zn.Class(Transaction, {
             if(!pool){
                 return this.fire('error', new Error('setPool pool is not exist.')), this;
             }
-            pool.on('error', function (err){
-                this.rollback(err);
-            }.bind(this));
             this._pool = pool;
+            pool.on('poolNotExistError', function (err){
+                    
+            });
+            pool.on('poolConnection', function (connection){
+                    
+            });
+            pool.on('poolConnectionError', function (err){
+                
+            }.bind(this));
+            pool.on('query', function (){
+
+            });
+            pool.on('queryError', function (){
+
+            });
+            pool.on('end', function (err){
+                
+            });
+            pool.on('endError', function (err){
+                
+            });
         },
         begin: function (before, after){
             var _self = this;
             this._queue.push(function (task){
                 _self._pool.getConnection(function (err, connection){
                     if(err){
+                        zn.error('Transaction getConnection', err);
                         task.error(err);
                     } else {
                         var _before = before && before.call(_self, connection, _self);
@@ -35,11 +55,12 @@ module.exports = zn.Class(Transaction, {
                     }
                 });
             }).push(function (task, connection){
-                zn.debug('Transaction: start');
+                zn.debug('Transaction start ...... ');
                 connection.query('START TRANSACTION', function (err, rows, fields) {
                     var _after = after && after.call(_self, err, rows, fields, _self);
                     _self.fire('begin', [err, rows, fields], { ownerFirst: true, method: 'apply' });
                     if(err){
+                        zn.error('Transaction start', err);
                         task.error(err);
                     } else {
                         if(_after === false){
@@ -65,6 +86,7 @@ module.exports = zn.Class(Transaction, {
                         var _after = after && after.call(_self, err, commitRows, commitFields, _self);
                         _self.fire('commit', [err, commitRows, commitFields], { ownerFirst: true, method: 'apply' });
                         if(err){
+                            zn.error('Transaction commit', err);
                             task.error(err);
                         }else {
                             if(_after === false){
@@ -82,21 +104,23 @@ module.exports = zn.Class(Transaction, {
             return  this._defer.promise;;
         },
         rollback: function (error, callback){
-            if(!this._connection){
-                return this;
-            }
-            this.fire('error', error);
-            zn.error('Transaction rollback - ', error);
-            this._connection.query('ROLLBACK', function (err, rows, fields){
-                this.fire('rollback', [err, rows, fields], { ownerFirst: true, method: 'apply' });
-                var _callback = callback && callback.call(this, err, rows, fields);
-                if(_callback === false) return;
-                if(err){
-                    this.fire('error', err);
-                }
-                this._defer.reject(error || err);
+            zn.error('Transaction Rollback', error);
+            if(this._connection){
+                this._connection.query('ROLLBACK', function (err, rows, fields){
+                    this.fire('rollback', [err, rows, fields], { ownerFirst: true, method: 'apply' });
+                    var _callback = callback && callback.call(this, err, rows, fields);
+                    if(_callback === false) return;
+                    if(err){
+                        zn.error('Transaction Rollback Excutive', err);
+                        this.fire('error', err);
+                    }
+                    this._defer.reject(error || err);
+                    this.destroy();
+                }.bind(this));
+            }else{
+                this._defer.reject(error);
                 this.destroy();
-            }.bind(this));
+            }
             
             return this;
         },
