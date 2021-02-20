@@ -2,7 +2,6 @@
  * Created by yangyxu on 8/20/14.
  */
 var __slice = Array.prototype.slice;
-const zn = require('../../../zeanium/dist/zn');
 var Transaction = require('./Transaction');
 module.exports = zn.Class(Transaction, {
     methods: {
