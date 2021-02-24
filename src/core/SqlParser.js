@@ -15,7 +15,7 @@ var VALUES = {
 };
 
 module.exports = zn.Class({
-    events: ['parse', 'parseTable', 'parseGroup', 'parseOrder', 'parseValues', 'parseUpdates', 'parseFields', 'parseWhere'],
+    events: ['parse', 'parsed', 'parseTable', 'parsedTable', 'parseGroup', 'parsedGroup', 'parseOrder', 'parsedOrder', 'parseValues', 'parsedValues', 'parseUpdates', 'parsedUpdates', 'parseFields', 'parsedFields', 'parseWhere', 'parsedWhere'],
     methods: {
         init: {
             auto: true,
@@ -103,13 +103,16 @@ module.exports = zn.Class({
             return zn.overwrite(_data, VALUES.DEFAULTS);
         },
         parseTable: function (table, data){
+            var _table = '';
             table = this.fire('parseTable', table, data) || table;
             switch (zn.type(table)){
                 case 'string':
-                    return table;
+                    _table = table;
                 case 'function':
-                    return "(" + (table.call(this._context)||'') + ")";
+                    _table = "(" + (table.call(this._context)||'') + ")";
             }
+
+            return this.fire('parsedTable', _table, data) || _table;
         },
         parseGroup: function (group, data){
             group = this.fire('parseGroup', group, data) || group;
@@ -129,7 +132,9 @@ module.exports = zn.Class({
             if(_val){
                 _val = 'group by ' + _val;
             }
-            return _val;
+
+
+            return this.fire('parsedGroup', _val, data) || _val;
         },
         parseOrder: function (order, data){
             order = this.fire('parseOrder', order, data) || order;
@@ -157,17 +162,18 @@ module.exports = zn.Class({
                 _val = 'order by ' + _val;
             }
 
-            return _val;
+            return this.fire('parsedOrder', _val, data) || _val;
         },
         parseValues: function (values, data){
             values = this.fire('parseValues', values, data) || values;
             if(zn.is(values, 'function')){
                 values = values.call(this._context);
             }
-            var _prefix = data.prefix || '';
+            var _prefix = data.prefix || '',
+                _return = '';
             switch (zn.type(values)){
                 case 'string':
-                    return values;
+                    _return = values;
                 case 'object':
                     var _keys = [],
                         _values = [];
@@ -178,8 +184,10 @@ module.exports = zn.Class({
                         }
                     }.bind(this));
 
-                    return "({0}) values ({1})".format(_keys.join(','), _values.join(','));
+                    _return = "({0}) values ({1})".format(_keys.join(','), _values.join(','));
             }
+
+            return this.fire('parsedValues', _return, data) || _return;
         },
         parseSets: function (updates, data){
             return this.parseUpdates(updates, data);
@@ -189,28 +197,32 @@ module.exports = zn.Class({
             if(zn.is(updates, 'function')){
                 updates = updates.call(this._context);
             }
-            var _prefix = data.prefix || '';
+            var _prefix = data.prefix || '',
+                _return = '';
             switch (zn.type(updates)){
                 case 'string':
-                    return updates;
+                    _return = updates;
                 case 'object':
                     var _updates = [];
                     zn.each(updates, function (value, key){
                         _updates.push(_prefix + key + ' = ' + this.__formatSqlValue(value));
                     }.bind(this));
 
-                    return _updates.join(',');
+                    _return = _updates.join(',');
             }
+
+            return this.fire('parsedUpdates', _return, data) || _return;
         },
         parseFields: function (fields, data){
             fields = this.fire('parseFields', fields, data) || fields;
             if(zn.is(fields, 'function')){
                 fields = fields.call(this._context);
             }
-            var _prefix = data.prefix || '';
+            var _prefix = data.prefix || '',
+                _return = '';
             switch (zn.type(fields)){
                 case 'function':
-                    return fields.call(this._context)||'';
+                    _return = fields.call(this._context)||'';
                 case 'array':
                     fields.map(function (field){
                         switch(zn.type(field)){
@@ -224,7 +236,7 @@ module.exports = zn.Class({
                         }
                     }.bind(this));
                     
-                    return fields.join(',');
+                    _return = fields.join(',');
                 case 'object':
                     var _fields = [];
                     zn.each(fields, function (value, key){
@@ -233,10 +245,12 @@ module.exports = zn.Class({
                         }
                     });
 
-                    return _fields.join(',');
+                    _return = _fields.join(',');
                 default:
-                    return fields;
+                    _return = fields;
             }
+
+            return this.fire('parsedFields', _return, data) || _return;
         },
         convertWhere: function (){
             var _toString = Object.prototype.toString,
@@ -654,7 +668,7 @@ module.exports = zn.Class({
                 _return = 'where ' + _return;
             }
 
-            return _return;
+            return this.fire('parsedWhere', _return, data) || _return;
         },
         __equal: function (value){
             switch(typeof value) {
