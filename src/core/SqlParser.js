@@ -209,11 +209,21 @@ module.exports = zn.Class({
             }
             var _prefix = data.prefix || '';
             switch (zn.type(fields)){
-                case 'string':
-                    return fields;
                 case 'function':
                     return fields.call(this._context)||'';
                 case 'array':
+                    fields.map(function (field){
+                        switch(zn.type(field)){
+                            case 'function':
+                                return field.call(this._context)||'';
+                            case 'array':
+                            case 'object':
+                                return this.parseFields(field, data);
+                            default:
+                                return field;
+                        }
+                    }.bind(this));
+                    
                     return fields.join(',');
                 case 'object':
                     var _fields = [];
@@ -224,6 +234,8 @@ module.exports = zn.Class({
                     });
 
                     return _fields.join(',');
+                default:
+                    return fields;
             }
         },
         convertWhere: function (){

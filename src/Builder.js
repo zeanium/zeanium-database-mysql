@@ -15,20 +15,23 @@ module.exports = zn.Class({
         init: function (){
             this.SCHEMA = SCHEMA;
             this.parser = new Parser(this);
-            this._rights = " (zxnz_module_auth_Rights_Enabled = 0 or (zxnz_module_auth_Rights_Enabled <> 0 and zxnz_module_auth_UserExist({0}, zxnz_module_auth_Rights_Users, zxnz_module_auth_Rights_Roles) <> 0)) ";
-            this._observeRights = " (zxnz_module_auth_Rights_Enabled = 0 or (zxnz_module_auth_Rights_Enabled <> 0 and zxnz_module_auth_UserExist({0}, zxnz_module_auth_Rights_Observe_Users, zxnz_module_auth_Rights_Observe_Roles) <> 0)) ";
         },
-        setRights: function (value){
-            this._rights = value;
+        extendMethod: function (method, methodFunction){
+            this[method] = methodFunction;
         },
-        setObserveRights: function (value){
-            this._observeRights = value;
+        joinOn: function (table1, table2, where, type){
+            var _keys = [];
+            for(var key in where) {
+                _keys.push(table1 + '.' + key + ' = ' + table2 + '.' + where[key]);
+            }
+            return "table " + table1 + " " + (type||'left') + " join table " + table2 + " on " + _keys.join(','); 
         },
-        rights: function (userId){
-            return this._rights.format(userId);
-        },
-        observeRights: function (userId){
-            return this._observeRights.format(userId);
+        tableFields: function (table, fields){
+            var _fields = fields.map(function (field){
+                return table + '.' + field;
+            });
+            
+            return _fields.join(','); 
         },
         paging: function (){
             return __slice.call(arguments).map(function (data){
@@ -55,6 +58,27 @@ module.exports = zn.Class({
         },
         parse: function (sql, data){
             return this.__format(sql, data);
+        },
+        table: function (table, data){
+            return this.parser.parseTable(table, data);
+        },
+        fields: function (fields, data) {
+            return this.parser.parseFields(fields, data);
+        },
+        values: function (values, data){
+            return this.parser.parseValues(values, data);
+        },
+        updates: function (updates, data){
+            return this.parser.parseUpdates(updates, data);
+        },
+        where: function (where, addKeyWord){
+            return this.parser.parseWhere(where, addKeyWord == undefined ? false : true);
+        },
+        order: function (order, data){
+            return this.parser.parseOrder(order, data);
+        },
+        group: function (group, data){
+            return this.parser.parseGroup(group, data);
         },
         format: function (sql, argv){
             var _argv = [];
