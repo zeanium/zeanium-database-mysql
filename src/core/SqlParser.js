@@ -74,6 +74,7 @@ module.exports = zn.Class({
                         case 'in':
                         case 'not in':
                             _val = this.__in(_val);
+                            break;
                         case 'between':
                         case 'not between':
                             _val = this.__betweenAnd(_val);
@@ -100,6 +101,7 @@ module.exports = zn.Class({
                     _data[key] = " " + _value + " ";
                 }
             }.bind(this));
+
             return zn.overwrite(_data, VALUES.DEFAULTS);
         },
         parseTable: function (table, data){
@@ -108,8 +110,10 @@ module.exports = zn.Class({
             switch (zn.type(table)){
                 case 'string':
                     _table = table;
+                    break;
                 case 'function':
                     _table = "(" + (table.call(this._context)||'') + ")";
+                    break;
             }
 
             return this.fire('parsedTable', _table, data) || _table;
@@ -174,6 +178,7 @@ module.exports = zn.Class({
             switch (zn.type(values)){
                 case 'string':
                     _return = values;
+                    break;
                 case 'object':
                     var _keys = [],
                         _values = [];
@@ -185,6 +190,7 @@ module.exports = zn.Class({
                     }.bind(this));
 
                     _return = "({0}) values ({1})".format(_keys.join(','), _values.join(','));
+                    break;
             }
 
             return this.fire('parsedValues', _return, data) || _return;
@@ -202,6 +208,7 @@ module.exports = zn.Class({
             switch (zn.type(updates)){
                 case 'string':
                     _return = updates;
+                    break;
                 case 'object':
                     var _updates = [];
                     zn.each(updates, function (value, key){
@@ -209,6 +216,7 @@ module.exports = zn.Class({
                     }.bind(this));
 
                     _return = _updates.join(',');
+                    break;
             }
 
             return this.fire('parsedUpdates', _return, data) || _return;
@@ -223,6 +231,7 @@ module.exports = zn.Class({
             switch (zn.type(fields)){
                 case 'function':
                     _return = fields.call(this._context)||'';
+                    break;
                 case 'array':
                     fields.map(function (field){
                         switch(zn.type(field)){
@@ -237,6 +246,7 @@ module.exports = zn.Class({
                     }.bind(this));
                     
                     _return = fields.join(',');
+                    break;
                 case 'object':
                     var _fields = [];
                     zn.each(fields, function (value, key){
@@ -246,8 +256,10 @@ module.exports = zn.Class({
                     });
 
                     _return = _fields.join(',');
+                    break;
                 default:
                     _return = fields;
+                    break;
             }
 
             return this.fire('parsedFields', _return, data) || _return;
@@ -424,6 +436,7 @@ module.exports = zn.Class({
                                         case 'in':
                                         case 'not in':
                                             _val = this.__in(_val);
+                                            break;
                                         case 'between':
                                         case 'not between':
                                             _val = this.__betweenAnd(_val);
@@ -475,6 +488,7 @@ module.exports = zn.Class({
                                             case 'in':
                                             case 'not in':
                                                 _val = this.__in(_val);
+                                                break;
                                             case 'between':
                                             case 'not between':
                                                 _val = this.__betweenAnd(_val);
@@ -539,6 +553,7 @@ module.exports = zn.Class({
                                     case 'in':
                                     case 'not in':
                                         value = this.__in(value);
+                                        break;
                                     case 'between':
                                     case 'not between':
                                         value = this.__betweenAnd(value);
@@ -589,6 +604,7 @@ module.exports = zn.Class({
                                     case 'in':
                                     case 'not in':
                                         _val = this.__in(_val);
+                                        break;
                                     case 'between':
                                     case 'not between':
                                         _val = this.__betweenAnd(_val);
@@ -640,6 +656,7 @@ module.exports = zn.Class({
                                         case 'in':
                                         case 'not in':
                                             _val = this.__in(_val);
+                                            break;
                                         case 'between':
                                         case 'not between':
                                             _val = this.__betweenAnd(_val);
@@ -668,7 +685,7 @@ module.exports = zn.Class({
                 _return = 'where ' + _return;
             }
 
-            return this.fire('parsedWhere', _return, data) || _return;
+            return this.fire('parsedWhere', _return, addKeyWord) || _return;
         },
         __equal: function (value){
             switch(typeof value) {
