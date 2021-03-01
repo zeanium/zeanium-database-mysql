@@ -100,7 +100,12 @@ module.exports = zn.Class({
         __format: function (sql, data){
             var _data = zn.overwrite({ }, data);
             _data.fields = _data.fields || '*';
-            return sql.format(this.parser.parse(_data)).replace(/\s+/g, ' ');
+            var _sql = sql.format(this.parser.parse(_data)).replace(/\s+/g, ' ');
+            if(_data.noBreak){
+                _sql = _sql.replace(';', '');
+            }
+
+            return _sql;
             //return sql.format(Parser.parse(data)).replace(/\s+/g, ' ').replace(/(^s*)|(s*$)/g, '');
         }
     }
