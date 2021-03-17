@@ -277,7 +277,7 @@ module.exports = zn.Class({
                         _where.push(_value);
                         break;
                     case '[object Object]':
-                        _value = this.parseWhere(_value, false);
+                        _value = this.parseWhere(_value, {}, false);
                         if(_value){
                             _where.push(_value);
                         }
@@ -318,14 +318,14 @@ module.exports = zn.Class({
                     case '[object Object]':
                         if(!Object.keys(_argv).length) continue;
                         if(_argv.value && _argv.operator) {
-                            _value = this.parseWhere(_argv.value, false);
+                            _value = this.parseWhere(_argv.value, {}, false);
                             _operator = _argv.operator;
                         }else{
-                            _value = this.parseWhere(_argv, false);
+                            _value = this.parseWhere(_argv, {}, false);
                         }
                         break;
                     case '[object Array]':
-                        _value = this.parseWhere(_argv, false);
+                        _value = this.parseWhere(_argv, {}, false);
                         break;
                     case '[object Function]':
                         _argv = _argv(_argvs, this);
@@ -333,13 +333,13 @@ module.exports = zn.Class({
                             if(_toString.call(_argv) == '[object Object]'){
                                 if(!Object.keys(_argv).length) continue;
                                 if(_argv.value && _argv.operator) {
-                                    _value = this.parseWhere(_argv.value, false);
+                                    _value = this.parseWhere(_argv.value, {}, false);
                                     _operator = _argv.operator;
                                 }else{
-                                    _value = this.parseWhere(_argv, false);
+                                    _value = this.parseWhere(_argv, {}, false);
                                 }
                             }else{
-                                _value = this.parseWhere(_argv, false);
+                                _value = this.parseWhere(_argv, {}, false);
                             }
                         }
                         break;
@@ -373,8 +373,9 @@ module.exports = zn.Class({
 
             return _where;
         },
-        parseWhere: function (where, addKeyWord){
-            where = this.fire('parseWhere', where, addKeyWord) || where;
+        parseWhere: function (where, data, addKeyWord){
+            addKeyWord = addKeyWord !== false ? true : false;
+            where = this.fire('parseWhere', where, data, addKeyWord) || where;
             if(zn.is(where, 'function')){
                 where = where.call(this._context);
             }
@@ -689,11 +690,12 @@ module.exports = zn.Class({
                 _return = _return.substring(3);
             }
 
+            _return = this.fire('parsedWhere', _return, data, addKeyWord) || _return;
             if(_return && addKeyWord !== false){
                 _return = 'where ' + _return;
             }
 
-            return this.fire('parsedWhere', _return, addKeyWord) || _return;
+            return _return;
         },
         __equal: function (value){
             switch(typeof value) {
