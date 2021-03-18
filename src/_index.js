@@ -1,6 +1,6 @@
 var node_mysql = require('mysql');
 var TransactionBlock = require('./mysql/TransactionBlock');
-var ConnectionTransaction = require('./mysql/ConnectionTransaction')
+var ConnectionTransaction = require('./mysql/ConnectionTransaction');
 module.exports = {
     createTransactionBlock: function (context){
         return new TransactionBlock(context);

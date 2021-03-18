@@ -1,9 +1,11 @@
 /**
  * Created by yangyxu on 9/17/14.
  */
+ var node_mysql = require('mysql');
 var ConnectionPool = require('./mysql/ConnectionPool');
 var ConnectionPoolTransaction = require('./mysql/ConnectionPoolTransaction');
 var ConnectionTransaction = require('./mysql/ConnectionTransaction');
+var TransactionBlock = require('./mysql/TransactionBlock');
 
 module.exports = zn.Class({
     statics: {
@@ -22,6 +24,15 @@ module.exports = zn.Class({
                 this._config = inConfig;
                 this._pool = new ConnectionPool(inConfig, inEvents);
             }
+        },
+        createTransactionBlock: function (context){
+            return new TransactionBlock(context);
+        },
+        createConnectionTransaction: function (config, events){
+            return new ConnectionTransaction(config, events);
+        },
+        createConnection: function (config){
+            return node_mysql.createConnection(config);
         },
         createPoolTransaction: function (events) {
             var _transaction = new ConnectionPoolTransaction(this._pool, events);
