@@ -12,7 +12,9 @@ module.exports = {
         return node_mysql.createConnection(config);
     },
     mysql: node_mysql,
+    TransactionBlock: TransactionBlock,
+    ConnectionTransaction: ConnectionTransaction,
     Connector: require('./Connector'),
     Builder: require('./Builder'),
     SCHEMA: require('./mysql/SCHEMA'),
-}
+};
