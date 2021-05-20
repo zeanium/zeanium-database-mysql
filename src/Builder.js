@@ -24,14 +24,41 @@ module.exports = zn.Class({
             for(var key in where) {
                 _keys.push(table1 + '.' + key + ' = ' + table2 + '.' + where[key]);
             }
-            return "table " + table1 + " " + (type||'left') + " join table " + table2 + " on " + _keys.join(','); 
+
+            return table1 + " " + (type||'left') + " join " + table2 + " on " + _keys.join(','); 
         },
         tableFields: function (table, fields){
+            var _temp = null;
             var _fields = fields.map(function (field){
-                return table + '.' + field;
+                if(field.indexOf('.') != -1){
+                    _temp = field.split('.');
+                    return _temp[0] + "(" + table + '.' + _temp[1] + ")" + (_temp[2] ? ' as ' + _temp[2] : '')
+                }else{
+                    return table + '.' + field;
+                }
             });
             
             return _fields.join(','); 
+        },
+        tableWhere: function (table, where){
+            var _objs = {};
+            for(var key in where) {
+                if(where[key] !== null) {
+                    _objs[table + '.' + key] = where[key];
+                }
+            }
+
+            return _objs;
+        },
+        tableOrder: function (table, order){
+            var _objs = {};
+            for(var key in order) {
+                if(order[key] !== null) {
+                    _objs[table + '.' + key] = order[key];
+                }
+            }
+
+            return _objs;
         },
         paging: function (){
             return __slice.call(arguments).map(function (data){

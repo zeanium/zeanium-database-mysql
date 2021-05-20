@@ -396,15 +396,34 @@ module.exports = zn.Class({
                                 _values.push(value);
                                 break;
                             case 'object':
+                                if(value.sql){
+                                    _values.push([
+                                        value.andOr || 'and', 
+                                        value.sql
+                                    ].join(' '));
+                                    break;
+                                }
+
                                 if(value.name && value.value) {
                                     zn.overwrite(value, {
                                         andOr: 'and',
                                         opt: '='
                                     });
+                                    var _key = value.name;
                                     var _val = value.value;
                                     if(_val == null) {
                                         _val = '';
                                     }
+                                    if(zn.is(_val, 'array') && value.valueAndOr){
+                                        _values.push([
+                                            value.andOr, 
+                                            '(' + _val.map(function (item){
+                                                return _key + " " + value.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
+                                            }).join(' ' + value.valueAndOr + ' ') + ')'
+                                        ].join(' '));
+                                        break;
+                                    }
+
                                     switch (value.opt) {
                                         case '=':
                                         case '>':
@@ -453,10 +472,21 @@ module.exports = zn.Class({
                                             andOr: 'and',
                                             opt: '='
                                         });
+                                        var _key = key || _field.name;
                                         var _val = _field.value;
                                         if(_val == null) {
                                             _val = '';
                                         }
+                                        if(zn.is(_val, 'array') && _field.valueAndOr){
+                                            _values.push([
+                                                _field.andOr, 
+                                                '(' + _val.map(function (item){
+                                                    return _key + " " + _field.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
+                                                }).join(' ' + _field.valueAndOr + ' ') + ')'
+                                            ].join(' '));
+                                            break;
+                                        }
+
                                         switch (_field.opt) {
                                             case '=':
                                             case '>':
@@ -496,7 +526,7 @@ module.exports = zn.Class({
                                                 _val = this.__betweenAnd(_val);
                                                 break;
                                         }
-                                        _field = [_field.andOr, key || _field.name, _field.opt, _val];
+                                        _field = [_field.andOr, _key, _field.opt, _val];
                                         _values.push(_field.join(' '));
                                     }
                                 }
@@ -511,7 +541,6 @@ module.exports = zn.Class({
                     break;
                 case 'object':
                     zn.each(where, function (value, key){
-                        zn.info('object', value, key, value == null, key == null);
                         if(value == null || key == null){
                             return -1;
                         }
@@ -568,15 +597,33 @@ module.exports = zn.Class({
                                 }
                                 break;
                             case 'object':
+                                if(value.sql){
+                                    _values.push([
+                                        value.andOr || 'and', 
+                                        value.sql
+                                    ].join(' '));
+                                    break;
+                                }
                                 if(value.name || value.value || value.opt) {
                                     zn.overwrite(value, {
                                         andOr: 'and',
                                         opt: '='
                                     });
+                                    var _key = value.name || key;
                                     var _val = value.value;
                                     if(_val == null) {
                                         _val = '';
                                     }
+                                    if(zn.is(_val, 'array') && value.valueAndOr){
+                                        _values.push([
+                                            value.andOr, 
+                                            '(' + _val.map(function (item){
+                                                return _key + " " + value.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
+                                            }).join(' ' + value.valueAndOr + ' ') + ')'
+                                        ].join(' '));
+                                        break;
+                                    }
+
                                     switch (value.opt) {
                                         case '=':
                                         case '>':
@@ -616,11 +663,12 @@ module.exports = zn.Class({
                                             _val = this.__betweenAnd(_val);
                                             break;
                                     }
-                                    value = [value.andOr, value.name || key, value.opt, _val];
+                                    value = [value.andOr, _key, value.opt, _val];
                                     _values.push(value.join(' '));
                                 } else {
                                     for(var key in value) {
                                         var _field = value[key];
+                                        var _key = _field.name || key;
                                         zn.overwrite(_field, {
                                             andOr: 'and',
                                             opt: '='
@@ -629,6 +677,16 @@ module.exports = zn.Class({
                                         if(_val == null) {
                                             _val = '';
                                         }
+                                        if(zn.is(_val, 'array') && _field.valueAndOr){
+                                            _values.push([
+                                                _field.andOr, 
+                                                '(' + _val.map(function (item){
+                                                    return _key + " " + _field.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
+                                                }).join(' ' + _field.valueAndOr + ' ') + ')'
+                                            ].join(' '));
+                                            break;
+                                        }
+
                                         switch (_field.opt) {
                                             case '=':
                                             case '>':
@@ -668,13 +726,15 @@ module.exports = zn.Class({
                                                 _val = this.__betweenAnd(_val);
                                                 break;
                                         }
-                                        _field = [_field.andOr, _field.name || key, _field.opt, _val];
+                                        _field = [_field.andOr, _key, _field.opt, _val];
                                         _values.push(_field.join(' '));
                                     }
                                 }
                                 break;
                             case 'array':
+                                break;
                             case 'function':
+                                break;
                         }
                     }.bind(this));
 
