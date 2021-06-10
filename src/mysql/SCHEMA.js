@@ -6,7 +6,7 @@ var MYSQL = {
     TABLE: {
         DESC: 'desc {table};',
         SHOW: 'show tables;',
-        CREATE: 'drop table if exists {table};create table {table} ({fields}) engine=innodb default charset=utf8;',
+        CREATE: 'drop table if exists {table};create table {table} ({fields}) engine=innodb default charset=utf8mb4;',
         SELECT: "select {fields} from {table} {where} {order} {group} {limit};",
         PAGING: "select {fields} from {table} {where} {order} {group} {limit};select count(*) as count from {table} {where};"
     },

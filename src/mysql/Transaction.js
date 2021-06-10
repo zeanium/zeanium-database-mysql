@@ -195,7 +195,7 @@ module.exports = zn.Class({
                     }
                 }
                 if(_callback === false){
-                    task.stop('Transcation: before call return false.');
+                    task.stop('Transcation: before return false.');
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
