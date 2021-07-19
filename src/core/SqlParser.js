@@ -74,6 +74,7 @@ module.exports = zn.Class({
                         case 'in':
                         case 'not in':
                             _val = this.__in(_val);
+                            if(!_val) return;
                             break;
                         case 'between':
                         case 'not between':
@@ -184,8 +185,11 @@ module.exports = zn.Class({
                         _values = [];
                     zn.each(values, function (value, key){
                         if(value != null) {
-                            _keys.push(_prefix + key);
-                            _values.push(this.__formatSqlValue(value));
+                            var _value = this.__formatSqlValue(value);
+                            if(_value) {
+                                _keys.push(_prefix + key);
+                                _values.push(_value);
+                            }
                         }
                     }.bind(this));
 
@@ -212,7 +216,10 @@ module.exports = zn.Class({
                 case 'object':
                     var _updates = [];
                     zn.each(updates, function (value, key){
-                        _updates.push(_prefix + key + ' = ' + this.__formatSqlValue(value));
+                        var _value = this.__formatSqlValue(value);
+                        if(_value) {
+                            _updates.push(_prefix + key + ' = ' + _value);
+                        }
                     }.bind(this));
 
                     _return = _updates.join(',');
@@ -457,6 +464,7 @@ module.exports = zn.Class({
                                         case 'in':
                                         case 'not in':
                                             _val = this.__in(_val);
+                                            if(!_val) return;
                                             break;
                                         case 'between':
                                         case 'not between':
@@ -520,6 +528,7 @@ module.exports = zn.Class({
                                             case 'in':
                                             case 'not in':
                                                 _val = this.__in(_val);
+                                                if(!_val) return;
                                                 break;
                                             case 'between':
                                             case 'not between':
@@ -548,7 +557,10 @@ module.exports = zn.Class({
                             case 'string':
                             case 'number':
                                 if(key.indexOf('&') == -1 && key.indexOf('|') == -1){
-                                    _values.push('and ' + key + ' = ' + this.__formatSqlValue(value));
+                                    var _value = this.__formatSqlValue(value);
+                                    if(_value) {
+                                        _values.push('and ' + key + ' = ' + _value);
+                                    }
                                 }else {
                                     var _piecs = key.indexOf('_'),
                                         _andOr = _piecs[0] || '&',
@@ -587,6 +599,7 @@ module.exports = zn.Class({
                                         case 'in':
                                         case 'not in':
                                             value = this.__in(value);
+                                            if(!value) return;
                                             break;
                                         case 'between':
                                         case 'not between':
@@ -657,6 +670,7 @@ module.exports = zn.Class({
                                         case 'in':
                                         case 'not in':
                                             _val = this.__in(_val);
+                                            if(!_val) return;
                                             break;
                                         case 'between':
                                         case 'not between':
@@ -720,6 +734,7 @@ module.exports = zn.Class({
                                             case 'in':
                                             case 'not in':
                                                 _val = this.__in(_val);
+                                                if(!_val) return;
                                                 break;
                                             case 'between':
                                             case 'not between':
@@ -790,11 +805,15 @@ module.exports = zn.Class({
                 ins = ins.call(this._context);
             }
             ins = ins || '0';
-            if(zn.is(ins, 'array') && ins.length){
-                if(typeof ins[0] == 'string'){
-                    ins = "'" + ins.join("','") + "'";
-                }else if(typeof ins[0] == 'number'){
-                    ins = ins.join(",");
+            if(zn.is(ins, 'array')){
+                if(ins.length) {
+                    if(typeof ins[0] == 'string'){
+                        ins = "'" + ins.join("','") + "'";
+                    }else if(typeof ins[0] == 'number'){
+                        ins = ins.join(",");
+                    }
+                }else{
+                    return null;
                 }
             }
 
