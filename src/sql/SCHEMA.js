@@ -16,4 +16,4 @@ module.exports = {
         MODIFY: 'alter table {table} modify column {field} {type};',
         DROP: 'alter table {table} drop column {field};'
     }
-}
+};

@@ -1,4 +1,4 @@
-var SqlParser = require('../core/SqlParser');
+var SqlParser = require('../sql/SqlParser');
 module.exports = zn.Class(SqlParser, {
     events: ['parseLimit'],
     methods: {

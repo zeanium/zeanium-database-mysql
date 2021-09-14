@@ -1,4 +1,4 @@
-var SCHEMA = require('../core/SCHEMA');
+var SCHEMA = require('../sql/SCHEMA');
 var MYSQL = {
     DATABASE: {
         CREATE: "drop database if exists {database};create database if not exists {database};"
@@ -16,6 +16,7 @@ var MYSQL = {
         DROP: 'alter table {table} drop {field};'
     }
 };
+
 var __deepCopy = function (source, target){
     for(var key in source){
         if(zn.is(source[key], 'plain')){

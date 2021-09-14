@@ -1,7 +1,7 @@
 /**
  * Created by yangyxu on 9/17/14.
  */
- var node_mysql = require('mysql');
+var node_mysql = require('mysql');
 var ConnectionPool = require('./mysql/ConnectionPool');
 var ConnectionPoolTransaction = require('./mysql/ConnectionPoolTransaction');
 var ConnectionTransaction = require('./mysql/ConnectionTransaction');

@@ -6,15 +6,39 @@ var SCHEMA = require('./mysql/SCHEMA');
 var __slice = Array.prototype.slice;
 
 module.exports = zn.Class({
-    static: true,
+    events: [ 
+        'joinOn', 'tableFields', 'tableWhere', 'tableOrder', 
+        'paging', 'select', 'insert', 'update', 'delete', 
+        'format'
+    ],
     properties: {
         SCHEMA: null,
+        session: null,
         parser: null
     },
     methods: {
-        init: function (){
+        init: function (session){
             this.SCHEMA = SCHEMA;
-            this.parser = new Parser(this);
+            this.session = session;
+            this.parser = new Parser(this, this);
+        },
+        loadMetas: function (metas){
+            if(metas.methods) {
+                for(var key in metas.methods) {
+                    this.extendMethod(key, metas.methods[key]);
+                }
+            }
+    
+            if(metas.events) {
+                for(var key in metas.events) {
+                    this.onParserEvent(key, metas.events[key]);
+                }
+            }
+
+            return this;
+        },
+        onParserEvent: function (event, handler, context){
+            return this.parser.on(event, handler, context), this;
         },
         extendMethod: function (method, methodFunction){
             this[method] = methodFunction;
@@ -25,7 +49,8 @@ module.exports = zn.Class({
                 _keys.push(table1 + '.' + key + ' = ' + table2 + '.' + where[key]);
             }
 
-            return table1 + " " + (type||'left') + " join " + table2 + " on " + _keys.join(','); 
+            var _return  = table1 + " " + (type||'left') + " join " + table2 + " on " + _keys.join(',');
+            return this.fire('joinOn', _return, __slice.call(arguments)) || _return;
         },
         tableFields: function (table, fields){
             var _temp = null;
@@ -37,18 +62,24 @@ module.exports = zn.Class({
                     return table + '.' + field;
                 }
             });
-            
-            return _fields.join(','); 
+
+            var _return = _fields.join(','); 
+            return this.fire('tableFields', _return, __slice.call(arguments)) || _return;
         },
         tableWhere: function (table, where){
             var _objs = {};
             for(var key in where) {
                 if(where[key] !== null) {
-                    _objs[table + '.' + key] = where[key];
+                    if(key.indexOf('.') == -1){
+                        _objs[table + '.' + key] = where[key];
+                    }else{
+                        _objs[key] = where[key];
+                    }
                 }
             }
 
-            return _objs;
+            var _return = _objs; 
+            return this.fire('tableWhere', _return, __slice.call(arguments)) || _return;
         },
         tableOrder: function (table, order){
             var _objs = {};
@@ -58,33 +89,40 @@ module.exports = zn.Class({
                 }
             }
 
-            return _objs;
+            var _return = _objs; 
+            return this.fire('tableOrder', _return, __slice.call(arguments)) || _return;
         },
         paging: function (){
-            return __slice.call(arguments).map(function (data){
+            var _return = __slice.call(arguments).map(function (data){
                 var _index = data.pageIndex || 1,
                     _size = data.pageSize || 10,
                     _start = (_index - 1) * _size,
                     _end = _index * _size;
 
                 data.limit = [_start, _size];
-                return this.__format(SCHEMA.TABLE.PAGING, data);
+                return this.__format(SCHEMA.TABLE.PAGING, data, 'paging');
             }.bind(this)).join('');
+
+            return this.fire('paging', _return, __slice.call(arguments)) || _return;
         },
         select: function (){
-            return this.format(SCHEMA.TABLE.SELECT, arguments);
+            var _return = this.format(SCHEMA.TABLE.SELECT, arguments, 'select');
+            return this.fire('select', _return, __slice.call(arguments)) || _return;
         },
         insert: function (){
-            return this.format(SCHEMA.TABLE.INSERT, arguments);
+            var _return = this.format(SCHEMA.TABLE.INSERT, arguments, 'insert');
+            return this.fire('insert', _return, __slice.call(arguments)) || _return;
         },
         update: function (){
-            return this.format(SCHEMA.TABLE.UPDATE, arguments);
+            var _return = this.format(SCHEMA.TABLE.UPDATE, arguments, 'update');
+            return this.fire('update', _return, __slice.call(arguments)) || _return;
         },
         delete: function (){
-            return this.format(SCHEMA.TABLE.DELETE, arguments);
+            var _return = this.format(SCHEMA.TABLE.DELETE, arguments, 'delete');
+            return this.fire('delete', _return, __slice.call(arguments)) || _return;
         },
-        parse: function (sql, data){
-            return this.__format(sql, data);
+        parse: function (sql, data, type){
+            return this.__format(sql, data, type);
         },
         table: function (table, data){
             return this.parser.parseTable(table, data);
@@ -107,26 +145,27 @@ module.exports = zn.Class({
         group: function (group, data){
             return this.parser.parseGroup(group, data);
         },
-        format: function (sql, argv){
+        format: function (sql, argv, type){
             var _argv = [];
             switch (zn.type(argv)) {
                 case 'array':
                     _argv = argv;
                     break;
                 case 'object':
-                    return this.__format(sql, argv);
+                    return this.__format(sql, argv, type);
                 case 'arguments':
                     _argv = __slice.call(argv);
                     break;
             }
 
             return _argv.map(function (data){
-                return this.__format(sql, data);
+                return this.__format(sql, data, type);
             }.bind(this)).join('');
         },
-        __format: function (sql, data){
+        __format: function (sql, data, type){
             var _data = zn.overwrite({ }, data);
             _data.fields = _data.fields || '*';
+            _data.type = type;
             var _sql = sql.format(this.parser.parse(_data)).replace(/\s+/g, ' ');
             if(_data.noBreak){
                 _sql = _sql.replace(';', '');

@@ -1,20 +1,26 @@
 var node_mysql = require('mysql');
-var TransactionBlock = require('./mysql/TransactionBlock');
-var ConnectionTransaction = require('./mysql/ConnectionTransaction');
+var sql = require('./sql/index.js');
+var mysql = require('./mysql/index.js');
+var Connector = require('./Connector');
+var SqlBuilder = require('./SqlBuilder');
+
 module.exports = {
     createTransactionBlock: function (context){
-        return new TransactionBlock(context);
+        return new mysql.TransactionBlock(context);
     },
     createConnectionTransaction: function (config, events){
-        return new ConnectionTransaction(config, events);
+        return new mysql.ConnectionTransaction(config, events);
     },
     createConnection: function (config){
         return node_mysql.createConnection(config);
     },
-    mysql: node_mysql,
-    TransactionBlock: TransactionBlock,
-    ConnectionTransaction: ConnectionTransaction,
-    Connector: require('./Connector'),
-    Builder: require('./Builder'),
-    SCHEMA: require('./mysql/SCHEMA'),
+    createSqlBuilder: function (session){
+        return new SqlBuilder(session);
+    },
+    createConnector: function (config, events){
+        return new Connector(config, events);
+    },
+    node_mysql: node_mysql,
+    sql: sql,
+    mysql: mysql
 };

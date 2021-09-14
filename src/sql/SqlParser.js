@@ -16,11 +16,16 @@ var VALUES = {
 
 module.exports = zn.Class({
     events: ['parse', 'parsed', 'parseTable', 'parsedTable', 'parseGroup', 'parsedGroup', 'parseOrder', 'parsedOrder', 'parseValues', 'parsedValues', 'parseUpdates', 'parsedUpdates', 'parseFields', 'parsedFields', 'parseWhere', 'parsedWhere'],
+    properties: {
+        sqlBuilder: null,
+        context: null
+    },
     methods: {
         init: {
             auto: true,
-            value: function (context){
-                this._context = context;
+            value: function (sqlBuilder, context){
+                this._sqlBuilder = sqlBuilder;
+                this._context = context || this;
             }
         },
         __firstCharUpperCase: function (value){
@@ -79,6 +84,11 @@ module.exports = zn.Class({
                         case 'between':
                         case 'not between':
                             _val = this.__betweenAnd(_val);
+                            break;
+                        case 'time_range':
+                            _val = this.__timeRange(value.key, _val);
+                            value.key = '';
+                            value.opt = '';
                             break;
                     }
                     value = [value.andOr, value.key, value.opt, _val].join(' ');
@@ -186,7 +196,7 @@ module.exports = zn.Class({
                     zn.each(values, function (value, key){
                         if(value != null) {
                             var _value = this.__formatSqlValue(value);
-                            if(_value) {
+                            if(_value !== null) {
                                 _keys.push(_prefix + key);
                                 _values.push(_value);
                             }
@@ -217,7 +227,7 @@ module.exports = zn.Class({
                     var _updates = [];
                     zn.each(updates, function (value, key){
                         var _value = this.__formatSqlValue(value);
-                        if(_value) {
+                        if(_value !== null) {
                             _updates.push(_prefix + key + ' = ' + _value);
                         }
                     }.bind(this));
@@ -466,9 +476,15 @@ module.exports = zn.Class({
                                             _val = this.__in(_val);
                                             if(!_val) return;
                                             break;
+
                                         case 'between':
                                         case 'not between':
                                             _val = this.__betweenAnd(_val);
+                                            break;
+                                        case 'time_range':
+                                            _val = this.__timeRange(value.name, _val);
+                                            value.name = '';
+                                            value.opt = '';
                                             break;
                                     }
                                     value = [value.andOr, value.name, value.opt, _val];
@@ -534,6 +550,11 @@ module.exports = zn.Class({
                                             case 'not between':
                                                 _val = this.__betweenAnd(_val);
                                                 break;
+                                            case 'time_range':
+                                                _val = this.__timeRange(_key, _val);
+                                                _key = '';
+                                                _field.opt = '';
+                                                break;
                                         }
                                         _field = [_field.andOr, _key, _field.opt, _val];
                                         _values.push(_field.join(' '));
@@ -558,7 +579,7 @@ module.exports = zn.Class({
                             case 'number':
                                 if(key.indexOf('&') == -1 && key.indexOf('|') == -1){
                                     var _value = this.__formatSqlValue(value);
-                                    if(_value) {
+                                    if(_value !== null) {
                                         _values.push('and ' + key + ' = ' + _value);
                                     }
                                 }else {
@@ -604,6 +625,11 @@ module.exports = zn.Class({
                                         case 'between':
                                         case 'not between':
                                             value = this.__betweenAnd(value);
+                                            break;
+                                        case 'time_range':
+                                            value = this.__timeRange(_key, value);
+                                            _key = '';
+                                            _opt = '';
                                             break;
                                     }
                                     _values.push([(_andOr=='&'?'and':'or'), _key, _opt, value].join(' '));
@@ -676,6 +702,11 @@ module.exports = zn.Class({
                                         case 'not between':
                                             _val = this.__betweenAnd(_val);
                                             break;
+                                        case 'time_range':
+                                            _val = this.__timeRange(_key, _val);
+                                            _key = '';
+                                            value.opt = '';
+                                            break;
                                     }
                                     value = [value.andOr, _key, value.opt, _val];
                                     _values.push(value.join(' '));
@@ -740,6 +771,11 @@ module.exports = zn.Class({
                                             case 'not between':
                                                 _val = this.__betweenAnd(_val);
                                                 break;
+                                            case 'time_range':
+                                                _val = this.__timeRange(_key, _val);
+                                                _key = '';
+                                                _field.opt = '';
+                                                break;
                                         }
                                         _field = [_field.andOr, _key, _field.opt, _val];
                                         _values.push(_field.join(' '));
@@ -799,6 +835,17 @@ module.exports = zn.Class({
         },
         __isNotNull: function (value){
             return "is not null";
+        },
+        __timeRange: function (name, value){
+            var _return = [];
+            if(value[0]) {
+                _return.push("UNIX_TIMESTAMP({0})>=UNIX_TIMESTAMP('{1}')".format(name, value[0]));
+            }
+            if(value[1]) {
+                _return.push("UNIX_TIMESTAMP({0})<=UNIX_TIMESTAMP('{1}')".format(name, value[1]));
+            }
+
+            return "(" + _return.join(' and ') +  ")";
         },
         __in: function (ins){
             if(zn.is(ins, 'function')){
