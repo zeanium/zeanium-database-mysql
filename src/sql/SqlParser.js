@@ -394,7 +394,7 @@ module.exports = zn.Class({
             addKeyWord = addKeyWord !== false ? true : false;
             where = this.fire('parseWhere', where, data, addKeyWord) || where;
             if(zn.is(where, 'function')){
-                where = where.call(this._context);
+                where = where.call(this._context, where, data, addKeyWord);
             }
             var _values = [],
                 _return = '';
@@ -405,7 +405,7 @@ module.exports = zn.Class({
                 case 'array':
                     where.forEach(function (value, index){
                         if(zn.is(value, 'function')){
-                            value = value.call(this._context);
+                            value = value.call(this._context, index, where, data, addKeyWord);
                         }
                         switch (zn.type(value)) {
                             case 'number':
@@ -573,6 +573,9 @@ module.exports = zn.Class({
                     zn.each(where, function (value, key){
                         if(value == null || key == null){
                             return -1;
+                        }
+                        if(zn.is(value, 'function')){
+                            value = value.call(this._context, key, where, data, addKeyWord);
                         }
                         switch(zn.type(value)){
                             case 'string':
