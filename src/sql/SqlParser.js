@@ -571,11 +571,11 @@ module.exports = zn.Class({
                     break;
                 case 'object':
                     zn.each(where, function (value, key){
-                        if(value == null || key == null){
-                            return -1;
-                        }
                         if(zn.is(value, 'function')){
                             value = value.call(this._context, key, where, data, addKeyWord);
+                        }
+                        if(value == null || key == null){
+                            return -1;
                         }
                         switch(zn.type(value)){
                             case 'string':
