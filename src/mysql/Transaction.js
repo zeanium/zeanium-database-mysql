@@ -61,11 +61,11 @@ module.exports = zn.Class({
         begin: function (before, after){
             throw new Error("Transaction 'begin' method not be implemented.");
         },
-        query: function(query, before, after, index){
+        query: function(query, before, after, options){
             if(!query && !before){ return this; }
-            var _task = this.__parseQueryTask(query, before, after);
-            if(index){
-                this._queue.insert(_task, null, index);
+            var _task = this.__parseQueryTask(query, before, after, options);
+            if(options && options.index){
+                this._queue.insert(_task, null, options.index);
             }else {
                 this._queue.push(_task);
             }
@@ -78,7 +78,7 @@ module.exports = zn.Class({
         rollback: function (error, callback){
             throw new Error("Transaction 'rollback' method not be implemented.");
         },
-        block: function (block, each){
+        block: function (block, each, options){
             if(zn.is(block, 'function')){
                 block = block.call(this);
             }
@@ -90,10 +90,10 @@ module.exports = zn.Class({
             block.each(function (task){
                 switch (task.type) {
                     case 'query':
-                        _task = this.__parseQueryTask(task.handler, task.before, task.after);
+                        _task = this.__parseQueryTask(task.handler, task.before, task.after, options);
                         break;
                     case 'insert':
-                        _task = this.__parseInsertTask(task.handler, task.before, task.after);
+                        _task = this.__parseInsertTask(task.handler, task.before, task.after, options);
                         break;
                 }
                 this._queue.push(_task);
@@ -141,18 +141,20 @@ module.exports = zn.Class({
                 }
             }.bind(this)), this;
         },
-        unshift: function (handler, before, after){
+        unshift: function (handler, before, after, options){
             return this.insert(handler, before, after, 0);
         },
-        push: function (handler, before, after){
+        push: function (handler, before, after, options){
             return this.insert(handler, before, after, -1);
         },
-        insert: function (handler, before, after, index) {
-            return this._queue.insert(this.__parseInsertTask(handler, before, after), this, index), this;
+        insert: function (handler, before, after, options) {
+            var _index = options ? (options.index || 0) : 0;
+            return this._queue.insert(this.__parseInsertTask(handler, before, after, options), this, _index), this;
         },
-        __parseInsertTask: function (handler, before, after){
+        __parseInsertTask: function (handler, before, after, options){
+            var _self = this;
             return function (task, connection, rows, fields){
-                var _callback = null;
+                var _callback = null, _options = options || {};
                 if(before){
                     _callback = before.call(this, handler, rows, fields, this);
                     if(typeof _callback == 'function'){
@@ -164,7 +166,7 @@ module.exports = zn.Class({
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
-                    task.done(connection, rows, fields);
+                    _self.__queryTaskDone(task, connection, rows, fields, _options.delay);
                 } else {
                     _callback = handler.call(this, task, connection, rows, fields);
                     if(_callback === false){
@@ -176,16 +178,25 @@ module.exports = zn.Class({
                         } else if(_after instanceof Error){
                             task.error(_after);
                         } else{
-                            task.done(connection, _after || rows, fields);
+                            _self.__queryTaskDone(task, connection, (_after || rows), fields, _options.delay);
                         }
                     }
                 }
             }.bind(this);
         },
-        __parseQueryTask: function (query, before, after){
+        __queryTaskDone: function (task, connection, rows, fields, delay){
+            if(delay){
+                setTimeout(()=>task.done(connection, rows, fields), delay);
+            }else{
+                task.done(connection, rows, fields);
+            }
+        },
+        __parseQueryTask: function (query, before, after, options){
+            var _self = this;
             return function (task, connection, rows, fields){
                 var _callback = null,
-                    _tag = query;
+                    _tag = query,
+                    _options = options || {};
                 if(before){
                     _callback = before.call(this, query, rows, fields, this);
                     if(typeof _callback == 'string'){
@@ -199,7 +210,7 @@ module.exports = zn.Class({
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
-                    task.done(connection, rows, fields);
+                    _self.__queryTaskDone(task, connection, rows, fields, _options.delay);
                 } else {
                     if(_callback && _callback.then && typeof _callback.then == 'function') {
                         _callback.then(function (data){
@@ -210,7 +221,7 @@ module.exports = zn.Class({
                             } else if(_after instanceof Error){
                                 task.error(_after);
                             } else {
-                                task.done(connection, (_after || data), null);
+                                _self.__queryTaskDone(task, connection, (_after || data), null, _options.delay);
                             }
                         }.bind(this), function (err){
                             after && after.call(this, err, null, null, this);
@@ -233,7 +244,7 @@ module.exports = zn.Class({
                                 } else if(_after instanceof Error){
                                     task.error(_after);
                                 } else {
-                                    task.done(connection, (_after || rows), fields);
+                                    _self.__queryTaskDone(task, connection, (_after || rows), fields, _options.delay);
                                 }
                             }
                         }.bind(this));
