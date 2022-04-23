@@ -1,6 +1,6 @@
 var __slice = Array.prototype.slice;
 module.exports = zn.Class({
-    events: ['connect', 'begin', 'query', 'commit', 'rollback', 'disconnect', 'error', 'end', 'finally'],
+    events: ['connect', 'begin', 'query', 'commit', 'rollback', 'disconnect', 'error', 'stop', 'end', 'finally'],
     properties: {
         connection: null,
         defer: null,
@@ -13,15 +13,18 @@ module.exports = zn.Class({
                 this.__initEvents__(events);
                 this._defer = zn.async.defer();
                 this._queue = zn.queue({}, {
-                    error: function (sender, err){
+                    error: (sender, err)=>{
+                        this.fire('error', err);
                         return this.rollback(err), false;
-                    }.bind(this),
-                    stop: function (sender, err){
+                    },
+                    stop: (sender, err)=>{
+                        this.fire('stop', err);
                         return this.rollback(err), false;
-                    }.bind(this),
-                    finally: function (){
+                    },
+                    finally: ()=>{
+                        this.fire('finally', __slice.call(arguments));
                         this.fire('finally', __slice.call(arguments), { ownerFirst: true, method: 'apply' });
-                    }.bind(this)
+                    }
                 });
             }
         },

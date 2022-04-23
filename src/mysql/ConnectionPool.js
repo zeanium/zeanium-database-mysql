@@ -35,23 +35,23 @@ module.exports = zn.Class({
                 multipleStatements: true
             }, config);
             this._pool = node_mysql.createPool(this._config);
-            this._pool.on('acquire', function (connection){
+            this._pool.on('acquire', (connection)=>{
                 zn.debug('Mysql connection pool acquire: ' + connection.threadId);
                 this.fire('acquire', connection);
-            }.bind(this));
-            this._pool.on('connection', function (connection){
+            });
+            this._pool.on('connection', (connection)=>{
                 zn.debug('Mysql connection pool connection: ' + connection.threadId);
                 this.fire('connection', connection);
-            }.bind(this));
-            this._pool.on('enqueue', function (connection){
+            });
+            this._pool.on('enqueue', (connection)=>{
                 zn.debug('Mysql connection pool enqueue: ' + connection.threadId);
                 this.fire('enqueue', connection);
-            }.bind(this));
-            this._pool.on('release', function (connection){
+            });
+            this._pool.on('release', (connection)=>{
                 zn.debug('Mysql connection pool release: ' + connection.threadId);
                 this._pool.removeAllListeners();
                 this.fire('release', connection);
-            }.bind(this));
+            });
 
             return this;
         },
@@ -69,12 +69,12 @@ module.exports = zn.Class({
                 return this.fire('poolNotExistError', new Error('Mysql pool is not exist.')), this;
             }
 
-            return this._pool.end(function (err) {
+            return this._pool.end((err)=>{
                 if(err){
                     this.fire('endError', err);
                 }
                 this.fire('end', err);
-            }.bind(this)), this;
+            }), this;
         },
         getConnection: function(callback){
             if(!this._pool){

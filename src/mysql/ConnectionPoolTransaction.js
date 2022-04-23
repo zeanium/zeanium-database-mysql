@@ -13,25 +13,25 @@ module.exports = zn.Class(Transaction, {
                 return this.fire('error', new Error('setPool pool is not exist.')), this;
             }
             this._pool = pool;
-            pool.on('poolNotExistError', function (err){
+            pool.on('poolNotExistError', (err)=>{
                     
             });
-            pool.on('poolConnection', function (connection){
+            pool.on('poolConnection', (connection)=>{
                     
             });
-            pool.on('poolConnectionError', function (err){
-                
-            }.bind(this));
-            pool.on('query', function (){
-
-            });
-            pool.on('queryError', function (){
-
-            });
-            pool.on('end', function (err){
+            pool.on('poolConnectionError', (err)=>{
                 
             });
-            pool.on('endError', function (err){
+            pool.on('query', ()=>{
+
+            });
+            pool.on('queryError', ()=>{
+
+            });
+            pool.on('end', (err)=>{
+                
+            });
+            pool.on('endError', (err)=>{
                 
             });
         },
@@ -40,7 +40,7 @@ module.exports = zn.Class(Transaction, {
             this._queue.push(function (task){
                 _self._pool.getConnection(function (err, connection){
                     if(err){
-                        zn.error('Transaction getConnection', err);
+                        zn.error('Transaction begin getConnection error: ', err);
                         task.error(err);
                     } else {
                         var _before = before && before.call(_self, connection, _self);
@@ -85,7 +85,7 @@ module.exports = zn.Class(Transaction, {
                         var _after = after && after.call(_self, err, commitRows, commitFields, _self);
                         _self.fire('commit', [err, commitRows, commitFields], { ownerFirst: true, method: 'apply' });
                         if(err){
-                            zn.error('Transaction commit', err);
+                            zn.error('Transaction commit error: ', err);
                             task.error(err);
                         }else {
                             if(_after === false){
@@ -110,7 +110,7 @@ module.exports = zn.Class(Transaction, {
                     var _callback = callback && callback.call(this, err, rows, fields);
                     if(_callback === false) return;
                     if(err){
-                        zn.error('Transaction Rollback Excutive', err);
+                        zn.error('Transaction rollback error: ', err);
                         this.fire('error', err);
                     }
                     this._defer.reject(error || err);
