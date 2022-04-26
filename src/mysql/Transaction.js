@@ -1,8 +1,10 @@
 var __slice = Array.prototype.slice;
+var SqlBuilder = require('../SqlBuilder');
 module.exports = zn.Class({
     events: ['connect', 'begin', 'query', 'commit', 'rollback', 'disconnect', 'error', 'stop', 'end', 'finally'],
     properties: {
         connection: null,
+        sql: null,
         defer: null,
         queue: null
     },
@@ -60,6 +62,16 @@ module.exports = zn.Class({
             }
 
             return this;
+        },
+        bindSql: function (sql){
+            return this._sql = sql, this;
+        },
+        bindSession: function (session){
+            if(!this._sql){
+                this._sql = new SqlBuilder(session);
+            }
+
+            return this._sql.session = session, this;
         },
         begin: function (before, after){
             throw new Error("Transaction 'begin' method not be implemented.");
@@ -232,11 +244,25 @@ module.exports = zn.Class({
                             task.error(err);
                         }.bind(this));
                     }else {
-                        zn.debug('Transaction query{0}: '.format(_tag!=query?' [ '+_tag+' ]':''), query);
-                        if(zn.is(query, 'array')){
-                            query = query.join(' ');
+                        if(zn.is(query, 'object')){
+                            query = this.__parseObjectToSqlString(query);
                         }
-                        connection.query(query, function (err, rows, fields){
+                        if(zn.is(query, 'array')){
+                            for(var i = 0, _length = query.length; i < _length; i++){
+                                if(zn.is(query[i], 'object')){
+                                    query[i] = this.__parseObjectToSqlString(query[i]);
+                                }
+                            }
+                        }
+                        if(!query){
+                            throw new Errpr("mysql transaction query string is empty.");
+                        }
+                        if(!zn.is(query, 'array')) {
+                            query = [ query ];
+                        }
+
+                        zn.debug('Transaction query{0}: '.format((zn.is(_tag, 'string') && _tag != query)?' [ '+_tag+' ]':''), query);
+                        connection.query(query.join(' '), function (err, rows, fields){
                             var _after = after && after.call(this, err, rows, fields, this);
                             this.fire('query', [err, rows, fields], { ownerFirst: true, method: 'apply' });
                             if(err){
@@ -254,6 +280,18 @@ module.exports = zn.Class({
                     }
                 }
             }.bind(this);
+        },
+        __parseObjectToSqlString: function (obj){
+            if(!this._sql){
+                this._sql = new SqlBuilder(obj.session);
+            }
+
+            var _method = obj.method || 'select', _handler = this._sql[_method];
+            if(_handler){
+                return _handler.call(this._sql, obj);
+            }else{
+                throw new Error('SqlBuilder has not the method: ', _method);
+            }
         }
     }
 });
