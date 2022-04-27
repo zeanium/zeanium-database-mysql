@@ -214,12 +214,8 @@ module.exports = zn.Class({
                     _options = options || {};
                 if(before){
                     _callback = before.call(this, query, rows, fields, this);
-                    if(typeof _callback == 'string'){
-                        query = _callback;
-                    }else if(zn.is(_callback, 'array')){
-                        query = _callback.join('');
-                    }
                 }
+
                 if(_callback === false){
                     task.stop('Transcation: before return false.');
                 } else if(_callback instanceof Error){
@@ -244,6 +240,9 @@ module.exports = zn.Class({
                             task.error(err);
                         }.bind(this));
                     }else {
+                        if(_callback){
+                            query = _callback;
+                        }
                         if(zn.is(query, 'object')){
                             query = this.__parseObjectToSqlString(query);
                         }
@@ -255,7 +254,7 @@ module.exports = zn.Class({
                             }
                         }
                         if(!query){
-                            throw new Errpr("mysql transaction query string is empty.");
+                            throw new Error("mysql transaction query string is empty.");
                         }
                         if(!zn.is(query, 'array')) {
                             query = [ query ];
