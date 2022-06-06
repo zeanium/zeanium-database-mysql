@@ -1,4 +1,5 @@
-var _ = require("./_index.js");
+var Connector = require('./Connector');
+var SqlBuilder = require('./SqlBuilder');
 
 module.exports = zn.Class({
     properties: {
@@ -7,8 +8,8 @@ module.exports = zn.Class({
     },
     methods: {
         init: function (config, events){
-            this._connector = _.createConnector(config, events);
-            this._sql = _.createSqlBuilder();
+            this._connector = new Connector(config, events);
+            this._sql = new SqlBuilder();
         },
         sliceArrayData: function (arrayData, size){
             var _data = [], _ary = [], _length = arrayData.length;
