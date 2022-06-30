@@ -103,7 +103,7 @@ module.exports = zn.Class(Transaction, {
             return  this._defer.promise;;
         },
         rollback: function (error, callback){
-            zn.error('Transaction Rollback', error);
+            zn.error('Transaction Rollback: ', error);
             if(this._connection){
                 this._connection.query('ROLLBACK', function (err, rows, fields){
                     this.fire('rollback', [err, rows, fields], { ownerFirst: true, method: 'apply' });
