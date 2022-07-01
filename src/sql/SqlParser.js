@@ -193,7 +193,7 @@ module.exports = zn.Class({
                 case 'object':
                     var _keys = [],
                         _values = [];
-                    zn.each(values, function (value, key){
+                    zn.each(values, (value, key)=>{
                         if(value != null) {
                             var _value = this.__formatSqlValue(value);
                             if(_value !== null) {
@@ -201,9 +201,9 @@ module.exports = zn.Class({
                                 _values.push(_value);
                             }
                         }
-                    }.bind(this));
+                    });
 
-                    _return = "({0}) values ({1})".format(_keys.join(','), _values.join(','));
+                    _return = "(" + _keys.join(',') + ") values (" + _values.join(',') + ")";
                     break;
             }
 
