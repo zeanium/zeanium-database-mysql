@@ -166,17 +166,25 @@ module.exports = zn.Class({
             var _data = zn.overwrite({ }, data);
             _data.fields = _data.fields || '*';
             _data.type = type;
+            var _parseData = this.parser.parse(_data);
             switch(type) {
+                case 'insert':
+
+                    break;
                 case 'update':
 
                     break;
                 case 'select':
 
                     break;
+                case 'delete':
+
+                    break;
             }
-            var _parseData = this.parser.parse(_data);
-            if(_parseData.where != null && typeof _parseData.where == 'string' && _parseData.where.trim().length < 2) {
-                return '';
+            if(type == 'update' || type == 'select' || type == 'delete'){
+                if(_parseData.where != null && typeof _parseData.where == 'string' && _parseData.where.trim().length < 2) {
+                    return '';
+                }
             }
             var _sql = sql.format(_parseData).replace(/\s+/g, ' ');
             if(_data.noBreak){
