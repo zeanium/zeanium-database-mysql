@@ -158,15 +158,27 @@ module.exports = zn.Class({
                     break;
             }
 
-            return _argv.map(function (data){
+            return _argv.map((data)=>{
                 return this.__format(sql, data, type);
-            }.bind(this)).join('');
+            }).join('');
         },
         __format: function (sql, data, type){
             var _data = zn.overwrite({ }, data);
             _data.fields = _data.fields || '*';
             _data.type = type;
-            var _sql = sql.format(this.parser.parse(_data)).replace(/\s+/g, ' ');
+            switch(type) {
+                case 'update':
+
+                    break;
+                case 'select':
+
+                    break;
+            }
+            var _parseData = this.parser.parse(_data);
+            if(_parseData.where != null && typeof _parseData.where == 'string' && _parseData.where.trim().length < 2) {
+                return '';
+            }
+            var _sql = sql.format(_parseData).replace(/\s+/g, ' ');
             if(_data.noBreak){
                 _sql = _sql.replace(';', '');
             }
