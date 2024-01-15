@@ -29,7 +29,7 @@ module.exports = zn.Class({
             }
         },
         __firstCharUpperCase: function (value){
-            return value.replace(/\b(\w)(\w*)/g, function($0, $1, $2) {
+            return value.replace(/\b(\w)(\w*)/g, ($0, $1, $2) => {
                 return $1.toUpperCase() + $2;
             });
         },
@@ -45,9 +45,9 @@ module.exports = zn.Class({
                     }
                     break;
                 case 'array': 
-                    value = "'" + value.map(function (item){
+                    value = "'" + value.map((item)=>{
                         return item.toString();
-                    }.bind(this)).join(',') + "'";
+                    }).join(',') + "'";
                     break;
                 case 'function':
                     value = value.call(this._context);
@@ -104,14 +104,14 @@ module.exports = zn.Class({
                 _data = {};
             this._context = this._context || context;
             data = this.fire('parse', data, context) || data;
-            zn.each(data || {}, function (value, key){
+            zn.each(data || {}, (value, key)=>{
                 key = key.toLowerCase();
                 _key = this.__firstCharUpperCase(key);
                 _value = (this["parse" + _key] && this["parse" + _key].call(this, value, data)) || '';
                 if(_value){
                     _data[key] = " " + _value + " ";
                 }
-            }.bind(this));
+            });
 
             return zn.overwrite(_data, VALUES.DEFAULTS);
         },
@@ -166,7 +166,7 @@ module.exports = zn.Class({
                     break;
                 case 'object':
                     var _temp = [];
-                    zn.each(order, function (value, key){
+                    zn.each(order, (value, key)=>{
                         _temp.push(key+' '+value);
                     });
                     _val = _temp.join(',');
@@ -180,6 +180,7 @@ module.exports = zn.Class({
             return this.fire('parsedOrder', _val, data) || _val;
         },
         parseValues: function (values, data){
+            data = data || {};
             values = this.fire('parseValues', values, data) || values;
             if(zn.is(values, 'function')){
                 values = values.call(this._context);
@@ -203,7 +204,14 @@ module.exports = zn.Class({
                         }
                     });
 
-                    _return = "(" + _keys.join(',') + ") values (" + _values.join(',') + ")";
+                    if(data.onlyValues) {
+                        _return = "(" + _values.join(',') + ")";
+                    }else if (data.onlyKeys) {
+                        _return = "(" + _keys.join(',') + ")";
+                    }else {
+                        _return = "(" + _keys.join(',') + ") values (" + _values.join(',') + ")";
+                    }
+
                     break;
             }
 
@@ -213,6 +221,7 @@ module.exports = zn.Class({
             return this.parseUpdates(updates, data);
         },
         parseUpdates: function (updates, data){
+            data = data || {};
             updates = this.fire('parseUpdates', updates, data) || updates;
             if(zn.is(updates, 'function')){
                 updates = updates.call(this._context);
@@ -225,12 +234,19 @@ module.exports = zn.Class({
                     break;
                 case 'object':
                     var _updates = [];
-                    zn.each(updates, function (value, key){
+                    zn.each(updates, (value, key) => {
                         var _value = this.__formatSqlValue(value);
                         if(_value !== null) {
                             _updates.push(_prefix + key + ' = ' + _value);
                         }
-                    }.bind(this));
+                    });
+
+                    _return = _updates.join(',');
+                    break;
+                case 'array':
+                    var _updates = updates.map((value, key)=>{
+                        return this.parseUpdates(value, data);
+                    });
 
                     _return = _updates.join(',');
                     break;
@@ -239,18 +255,20 @@ module.exports = zn.Class({
             return this.fire('parsedUpdates', _return, data) || _return;
         },
         parseFields: function (fields, data){
+            data = data || {};
             fields = this.fire('parseFields', fields, data) || fields;
             if(zn.is(fields, 'function')){
                 fields = fields.call(this._context);
             }
             var _prefix = data.prefix || '',
+                _onlyKey = data.onlyKey,
                 _return = '';
             switch (zn.type(fields)){
                 case 'function':
                     _return = fields.call(this._context)||'';
                     break;
                 case 'array':
-                    fields.map(function (field){
+                    fields.map((field)=>{
                         switch(zn.type(field)){
                             case 'function':
                                 return field.call(this._context)||'';
@@ -260,15 +278,19 @@ module.exports = zn.Class({
                             default:
                                 return field;
                         }
-                    }.bind(this));
+                    });
                     
                     _return = fields.join(',');
                     break;
                 case 'object':
                     var _fields = [];
-                    zn.each(fields, function (value, key){
-                        if(value && key) {
-                            _fields.push(_prefix + value + ' as ' + key);
+                    zn.each(fields, (value, key)=>{
+                        if(key) {
+                            if(_onlyKey){
+                                _fields.push(key);
+                            }else if(value) {
+                                _fields.push(_prefix + value + ' as ' + key);
+                            }
                         }
                     });
 
@@ -403,7 +425,7 @@ module.exports = zn.Class({
                     _return = where;
                     break;
                 case 'array':
-                    where.forEach(function (value, index){
+                    where.forEach((value, index)=>{
                         if(zn.is(value, 'function')){
                             value = value.call(this._context, index, where, data, addKeyWord);
                         }
@@ -434,7 +456,7 @@ module.exports = zn.Class({
                                     if(zn.is(_val, 'array') && value.valueAndOr){
                                         _values.push([
                                             value.andOr, 
-                                            '(' + _val.map(function (item){
+                                            '(' + _val.map((item)=>{
                                                 return _key + " " + value.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
                                             }).join(' ' + value.valueAndOr + ' ') + ')'
                                         ].join(' '));
@@ -504,7 +526,7 @@ module.exports = zn.Class({
                                         if(zn.is(_val, 'array') && _field.valueAndOr){
                                             _values.push([
                                                 _field.andOr, 
-                                                '(' + _val.map(function (item){
+                                                '(' + _val.map((item)=>{
                                                     return _key + " " + _field.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
                                                 }).join(' ' + _field.valueAndOr + ' ') + ')'
                                             ].join(' '));
@@ -565,12 +587,12 @@ module.exports = zn.Class({
                                 _values.push(value.join(' '));
                                 break;
                         }
-                    }.bind(this));
+                    });
 
                     _return = _values.join(' ');
                     break;
                 case 'object':
-                    zn.each(where, function (value, key){
+                    zn.each(where, (value, key)=>{
                         if(zn.is(value, 'function')){
                             value = value.call(this._context, key, where, data, addKeyWord);
                         }
@@ -659,7 +681,7 @@ module.exports = zn.Class({
                                     if(zn.is(_val, 'array') && value.valueAndOr){
                                         _values.push([
                                             value.andOr, 
-                                            '(' + _val.map(function (item){
+                                            '(' + _val.map((item)=>{
                                                 return _key + " " + value.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
                                             }).join(' ' + value.valueAndOr + ' ') + ')'
                                         ].join(' '));
@@ -728,7 +750,7 @@ module.exports = zn.Class({
                                         if(zn.is(_val, 'array') && _field.valueAndOr){
                                             _values.push([
                                                 _field.andOr, 
-                                                '(' + _val.map(function (item){
+                                                '(' + _val.map((item)=>{
                                                     return _key + " " + _field.opt + " " + (zn.is(item, 'number')?item:"'" + item + "'"); 
                                                 }).join(' ' + _field.valueAndOr + ' ') + ')'
                                             ].join(' '));
@@ -790,7 +812,7 @@ module.exports = zn.Class({
                             case 'function':
                                 break;
                         }
-                    }.bind(this));
+                    });
 
                     _return = _values.join(' ');
                     break;

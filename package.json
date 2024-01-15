@@ -1,6 +1,6 @@
 {
   "name": "@zeanium/database-mysql",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "zeanium http server module",
   "main": "index.js",
   "repository": {
