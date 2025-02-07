@@ -49,8 +49,8 @@ module.exports = zn.Class({
             });
             this._pool.on('release', (connection)=>{
                 zn.debug('Mysql connection pool release: ' + connection.threadId);
-                this._pool.removeAllListeners();
                 this.fire('release', connection);
+                this._pool.removeAllListeners();
             });
 
             return this;

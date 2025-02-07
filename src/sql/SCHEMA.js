@@ -4,7 +4,7 @@ module.exports = {
     },
     TABLE: {
         DROP: 'drop table {table};',
-        CREATE: 'create table {table} ({fields});',
+        CREATE: 'create table {table} ({fields}) engine={engine} default charset={charset};',
         INSERT: "insert into {table} {values};",
         UPDATE: "update {table} set {updates} {where};",
         DELETE: "delete from {table} {where};",

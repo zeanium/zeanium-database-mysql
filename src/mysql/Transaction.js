@@ -24,7 +24,6 @@ module.exports = zn.Class({
                         return this.rollback(err), false;
                     },
                     finally: ()=>{
-                        this.fire('finally', __slice.call(arguments));
                         this.fire('finally', __slice.call(arguments), { ownerFirst: true, method: 'apply' });
                     }
                 });

@@ -75,13 +75,15 @@ module.exports = zn.Class(Transaction, {
         },
         commit: function (before, after){
             var _self = this;
-            this._queue.push(function (task, connection, rows, fields){
+            this._queue.push((task, connection, rows, fields)=>{
                 var _before = before && before.call(_self, rows, fields, _self);
                 if(_before === false){
                     task.stop(new Error('Transcation commit: before call return false.'));
                 }else{
                     zn.debug('Transaction: commit');
-                    connection.query('COMMIT', function (err, commitRows, commitFields){
+                    connection.query('COMMIT', (err, commitRows, commitFields)=>{
+                        connection.release();
+                        connection.removeAllListeners();
                         var _after = after && after.call(_self, err, commitRows, commitFields, _self);
                         _self.fire('commit', [err, commitRows, commitFields], { ownerFirst: true, method: 'apply' });
                         if(err){
@@ -104,9 +106,11 @@ module.exports = zn.Class(Transaction, {
         },
         rollback: function (error, callback){
             zn.error('Transaction Rollback: ', error);
-            console.log(error);
+            //console.log(error);
             if(this._connection){
-                this._connection.query('ROLLBACK', function (err, rows, fields){
+                this._connection.query('ROLLBACK', (err, rows, fields)=>{
+                    this._connection.release();
+                    this._connection.removeAllListeners();
                     this.fire('rollback', [err, rows, fields], { ownerFirst: true, method: 'apply' });
                     var _callback = callback && callback.call(this, err, rows, fields);
                     if(_callback === false) return;
@@ -116,7 +120,7 @@ module.exports = zn.Class(Transaction, {
                     }
                     this._defer.reject(error || err);
                     this.destroy();
-                }.bind(this));
+                });
             }else{
                 this._defer.reject(error);
                 this.destroy();
@@ -125,24 +129,30 @@ module.exports = zn.Class(Transaction, {
             return this;
         },
         destroy: function (){
-            if(this._connection){
-                this._connection.release();
-                this._connection.removeAllListeners();
-                this._connection = null;
-                delete this._connection;
-            }
-            if(this._defer){
-                this._defer.destroy();
-                this._defer = null;
-                delete _defer;
-            }
-            if(this._queue){
-                this._queue.destroy();
-                this._queue = null;
-                delete this._queue;
+            try {
+                if(this._connection){
+                    //this._connection.release();
+                    //this._connection.removeAllListeners();
+                    this._connection = null;
+                    delete this._connection;
+                }
+                if(this._defer){
+                    this._defer.destroy();
+                    this._defer = null;
+                    delete _defer;
+                }
+                if(this._queue){
+                    this._queue.destroy();
+                    this._queue = null;
+                    delete this._queue;
+                }
+                this.dispose();
+            } catch (err) {
+                zn.error('【Transaction destroy】ERROR: ', err);
+                this.fire('error', err);
             }
 
-            return this.dispose(), this;
+            return this;
         }
     }
 });
