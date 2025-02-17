@@ -41,23 +41,23 @@ module.exports = zn.Class({
         __initConnectionEvents__: function (){
             if(this._connection){
                 var _threadId = this._connection.threadId;
-                this._connection.on('error', function (err){
-                    this.fire('error', err);
-                    zn.error('Mysql connection error(' + err.code + '): ', err);
+                this._connection.on('error', (err)=>{
+                    zn.error('【 Transaction: connection(' + _threadId + ') error 】: ', err);
                     if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+                        zn.error('【 Transaction: connection(' + _threadId + ') error(disconnect) 】: ', err);
                         this.fire('disconnect', err);
-                        zn.error('Mysql connection "'+ _threadId+ '" disconnect.');
                     }
-                }.bind(this));
-                this._connection.on('end', function (err){
+                    this.fire('error', err);
+                });
+                this._connection.on('end', (err)=>{
                     if(err){
-                        zn.error('Mysql connection "'+ _threadId+ '" end error: ', err);
+                        zn.error('【 Transaction: connection(' + _threadId + ') end error 】: ', err);
                         this.fire('error', err);
                     }else{
-                        zn.debug('Mysql connection "'+ _threadId+ '" end.');
-                        this.fire('end', this._connection);
+                        zn.debug('【 Transaction: connection(' + _threadId + ') end ok 】');
                     }
-                }.bind(this));
+                    this.fire('end', this._connection);
+                });
             }
 
             return this;
@@ -121,21 +121,36 @@ module.exports = zn.Class({
                 return this.fire('error', new Error('Mysql connection is not exist.')), this;
             }
 
+            if(this._connection.state=='disconnected'){
+                return this;
+            }
+
             return this._connection.release(), this;
+        },
+        destroy: function (){
+            if(!this._connection){
+                return this.fire('error', new Error('Mysql connection is not exist.')), this;
+            }
+            if(this._connection.state=='disconnected'){
+                return this;
+            }
+
+            return this._connection.destroy(), this;
         },
         connect: function(callback){
             if(!this._connection){
                 return this.fire('error', new Error('Mysql connection is not exist.')), this;
             }
             
-            return this._connection.connect(function (err){
+            return this._connection.connect((err)=>{
                 callback && callback(err);
                 if(err){
+                    zn.error('【 Transaction: connection.connect error 】: ', err);
                     this.fire('error', err);
                 }else {
                     this.fire('connect', this._connection);
                 }
-            }.bind(this)), this;
+            }), this;
         },
         end: function (callback) {
             if(!this._connection){
@@ -146,14 +161,15 @@ module.exports = zn.Class({
                 return this;
             }
 
-            return this._connection.end(function (err){
+            return this._connection.end((err)=>{
                 callback && callback(err);
                 if(err){
+                    zn.error('【 Transaction: connection.end error 】: ', err);
                     this.fire('error', err);
                 }else{
                     this.fire('end', this._connection);
                 }
-            }.bind(this)), this;
+            }), this;
         },
         unshift: function (handler, before, after, options){
             return this.insert(handler, before, after, 0);
@@ -176,7 +192,7 @@ module.exports = zn.Class({
                     }
                 }
                 if(_callback === false){
-                    task.stop('Transcation: before call return false.');
+                    task.stop('Transcation.stop: before call return false.');
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
@@ -184,11 +200,11 @@ module.exports = zn.Class({
                 } else {
                     _callback = handler.call(this, task, connection, rows, fields);
                     if(_callback === false){
-                        task.stop('Transcation: handler call return false.');
+                        task.stop('Transcation.stop: handler call return false.');
                     } else {
                         var _after = after && after.call(this, null, _callback || rows, fields, this);
                         if(_after === false){
-                            task.stop('Transcation: after call return false.');
+                            task.stop('Transcation.stop: after call return false.');
                         } else if(_after instanceof Error){
                             task.error(_after);
                         } else{
@@ -216,7 +232,7 @@ module.exports = zn.Class({
                 }
 
                 if(_callback === false){
-                    task.stop('Transcation: before return false.');
+                    task.stop('Transcation.stop: before return false.');
                 } else if(_callback instanceof Error){
                     task.error(_callback);
                 } else if(_callback === -1){
@@ -227,7 +243,7 @@ module.exports = zn.Class({
                             var _after = after && after.call(this, null, data, null, this);
                             this.fire('query', [null, data, null], { ownerFirst: true, method: 'apply' });
                             if(_after === false){
-                                task.stop('Transcation: after call return false.');
+                                task.stop('Transcation.stop: after call return false.');
                             } else if(_after instanceof Error){
                                 task.error(_after);
                             } else {
@@ -259,7 +275,7 @@ module.exports = zn.Class({
                             query = [ query ];
                         }
 
-                        zn.debug('Transaction query{0}: '.format((zn.is(_tag, 'string') && _tag != query)?' [ '+_tag+' ]':''), query);
+                        zn.debug('【 Transaction: connection.query 】{0}: '.format((zn.is(_tag, 'string') && _tag != query)?' [ '+_tag+' ]':''), query);
                         connection.query(query.join(' '), function (err, rows, fields){
                             var _after = after && after.call(this, err, rows, fields, this);
                             this.fire('query', [err, rows, fields], { ownerFirst: true, method: 'apply' });
@@ -267,7 +283,7 @@ module.exports = zn.Class({
                                 task.error(err);
                             }else {
                                 if(_after === false){
-                                    task.stop('Transcation: after call return false.');
+                                    task.stop('Transcation.stop: after call return false.');
                                 } else if(_after instanceof Error){
                                     task.error(_after);
                                 } else {

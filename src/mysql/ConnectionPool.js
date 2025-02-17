@@ -29,26 +29,28 @@ module.exports = zn.Class({
         },
         initPool: function (config){
             this._config = zn.extend({
-                acquireTimeout: 20000,
-                connectionLimit: 100,
+                acquireTimeout: 10000,
+                connectionLimit: 1000,
+                queueLimit: 0,
                 dateStrings: true,
+                waitForConnections: true,
                 multipleStatements: true
             }, config);
             this._pool = node_mysql.createPool(this._config);
             this._pool.on('acquire', (connection)=>{
-                zn.debug('Mysql connection pool acquire: ' + connection.threadId);
+                zn.debug('[ConnectionPool] pool.acquire: ' + connection.threadId);
                 this.fire('acquire', connection);
             });
             this._pool.on('connection', (connection)=>{
-                zn.debug('Mysql connection pool connection: ' + connection.threadId);
+                zn.debug('[ConnectionPool] pool.connection: ' + connection.threadId);
                 this.fire('connection', connection);
             });
             this._pool.on('enqueue', (connection)=>{
-                zn.debug('Mysql connection pool enqueue: ' + connection.threadId);
+                zn.debug('[ConnectionPool] pool.enqueue: ' + connection.threadId);
                 this.fire('enqueue', connection);
             });
             this._pool.on('release', (connection)=>{
-                zn.debug('Mysql connection pool release: ' + connection.threadId);
+                zn.debug('[ConnectionPool] pool.release: ' + connection.threadId);
                 this.fire('release', connection);
                 this._pool.removeAllListeners();
             });
@@ -81,7 +83,7 @@ module.exports = zn.Class({
                 return this.fire('poolNotExistError', new Error('Mysql pool is not exist.')), this;
             }
 
-            return this._pool.getConnection(function (err, connection){
+            return this._pool.getConnection((err, connection)=>{
                 if(err){
                     this.fire('poolConnectionError', err);
                 }else{
@@ -89,7 +91,7 @@ module.exports = zn.Class({
                 }
 
                 callback && callback(err, connection, this._pool);
-            }.bind(this)), this;
+            }), this;
         },
         query: function (){
             if(!this._pool){
@@ -99,14 +101,14 @@ module.exports = zn.Class({
                 _argv = __slice.call(arguments),
                 _sql = _argv.shift();
             if(typeof _sql == 'string' && _argv.length) _sql = _sql.format(_argv);
-            this._pool.getConnection(function (err, connection){
+            this._pool.getConnection((err, connection)=>{
                 if (err){
                     _defer.reject(err);
                     this.fire('connectionError', err);
                 }else {
-                    zn.debug('Query: ', _sql);
+                    zn.debug('[ConnectionPool query]: ', _sql);
                     this.fire('query', _sql);
-                    connection.query(_sql, function (err, rows, fields){
+                    connection.query(_sql, (err, rows, fields)=>{
                         connection.release();
                         if(err){
                             _defer.reject(err);
@@ -114,9 +116,9 @@ module.exports = zn.Class({
                         }else {
                             _defer.resolve(rows, fields, this._pool);
                         }
-                    }.bind(this));
+                    });
                 }
-            }.bind(this));
+            });
 
             return _defer.promise;
         },
@@ -129,14 +131,14 @@ module.exports = zn.Class({
                 _sql = _argv.shift();
             if(typeof _sql == 'string' && _argv.length) _sql = _sql.format(_argv);
             this.fire('query', _sql);
-            this._pool.query(_sql, function (err, rows, fields){
+            this._pool.query(_sql, (err, rows, fields)=>{
                 if(err){
                     _defer.reject(err);
                     this.fire('queryError', err);
                 }else {
                     _defer.resolve(rows, fields, this._pool);
                 }
-            }.bind(this));
+            });
 
             return _defer.promise;
         }
